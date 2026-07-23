@@ -2,7 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('dlchan', {
   appName: 'DL-chan',
-  version: '0.2.0',
+  version: '0.2.1',
   pickFolder: () => ipcRenderer.invoke('download:pick-folder'),
   startDownload: (payload) => ipcRenderer.invoke('download:start', payload),
   listFormats: (url) => ipcRenderer.invoke('download:list-formats', url),

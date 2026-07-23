@@ -122,11 +122,22 @@
       <h2 data-i18n="addTitle">เพิ่มลิงก์ดาวน์โหลด</h2>
       <label class="field-label" for="input-url">URL</label>
       <input id="input-url" class="field-input" type="text" placeholder="https://..." />
+      <label class="field-label" for="input-category" data-i18n="fieldCategory">หมวดหมู่</label>
+      <div class="path-row">
+        <select id="input-category" class="field-input"></select>
+        <button id="btn-add-category" class="btn btn-ghost btn-sm" type="button" title="เพิ่มหมวดหมู่ใหม่">+</button>
+      </div>
       <label class="field-label" for="input-path" data-i18n="fieldSaveTo">บันทึกไปที่</label>
       <div class="path-row">
         <input id="input-path" class="field-input" type="text" placeholder="C:\Users\...\Downloads" />
         <button id="btn-browse" class="btn btn-ghost btn-sm"><i class="ti ti-folder"></i> <span data-i18n="btnBrowse">เลือกโฟลเดอร์</span></button>
       </div>
+      <label class="field-checkbox">
+        <input type="checkbox" id="input-remember-folder" />
+        <span id="remember-folder-label" data-i18n="checkRememberFolder">จดจำโฟลเดอร์นี้ไว้สำหรับหมวดหมู่ที่เลือก</span>
+      </label>
+      <label class="field-label" for="input-description" data-i18n="fieldDescription">คำอธิบาย (ถ้ามี)</label>
+      <textarea id="input-description" class="field-input" rows="2"></textarea>
       <label class="field-label" for="input-referer" data-i18n="fieldReferer">Referer (ใส่เฉพาะลิงก์ที่โหลดตรงๆ ไม่ได้)</label>
       <input id="input-referer" class="field-input" type="text" placeholder="https://site-ที่เจอลิงก์นี้/..." />
       <div id="input-quality-row" class="hidden">

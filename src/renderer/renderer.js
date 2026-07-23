@@ -43,6 +43,65 @@ function categorize(filename) {
   return 'other';
 }
 
+const BUILT_IN_CATEGORIES = [
+  { key: 'video', label: 'วิดีโอ', icon: 'ti-video' },
+  { key: 'music', label: 'เพลง', icon: 'ti-music' },
+  { key: 'programs', label: 'โปรแกรม', icon: 'ti-apps' },
+  { key: 'documents', label: 'เอกสาร', icon: 'ti-file-text' },
+  { key: 'compressed', label: 'บีบอัด', icon: 'ti-file-zip' },
+  { key: 'other', label: 'อื่นๆ', icon: 'ti-file' }
+];
+
+// --- Custom categories (persisted) + per-category "remembered folder" ------
+
+const CUSTOM_CATEGORIES_KEY = 'dlchan-custom-categories';
+const CATEGORY_FOLDERS_KEY = 'dlchan-category-folders';
+
+function getCustomCategories() {
+  try { return JSON.parse(localStorage.getItem(CUSTOM_CATEGORIES_KEY) || '[]'); } catch { return []; }
+}
+
+function saveCustomCategories(list) {
+  localStorage.setItem(CUSTOM_CATEGORIES_KEY, JSON.stringify(list));
+}
+
+function getCategoryFolders() {
+  try { return JSON.parse(localStorage.getItem(CATEGORY_FOLDERS_KEY) || '{}'); } catch { return {}; }
+}
+
+function rememberCategoryFolder(category, folder) {
+  const map = getCategoryFolders();
+  map[category] = folder;
+  localStorage.setItem(CATEGORY_FOLDERS_KEY, JSON.stringify(map));
+}
+
+function slugifyCategory(name) {
+  const slug = name.trim().toLowerCase().replace(/[^a-z0-9ก-๙]+/gi, '-').replace(/^-+|-+$/g, '');
+  return slug || `cat${Date.now()}`;
+}
+
+function allCategories() {
+  return [...BUILT_IN_CATEGORIES, ...getCustomCategories()];
+}
+
+function addSidebarCategoryNode(category) {
+  const node = document.createElement('div');
+  node.className = 'tree-node';
+  node.dataset.filter = `category:${category.key}`;
+  node.innerHTML = `<i class="ti ${category.icon || 'ti-folder'}"></i> <span>${category.label}</span>`;
+  document.querySelector('[data-filter="category:video"]').after(node);
+  wireTreeNode(node);
+}
+
+function populateCategorySelect() {
+  const select = document.getElementById('input-category');
+  const previous = select.value;
+  select.innerHTML = allCategories()
+    .map((c) => `<option value="${c.key}">${c.label}</option>`)
+    .join('');
+  if ([...select.options].some((o) => o.value === previous)) select.value = previous;
+}
+
 // --- Add / start download -------------------------------------------------
 
 const inputQualityRow = document.getElementById('input-quality-row');
@@ -91,8 +150,38 @@ async function detectYtDlpUrl(url) {
   inputQuality.innerHTML = options.join('');
 }
 
-btnAdd.addEventListener('click', () => modalAdd.classList.remove('hidden'));
+const inputCategory = document.getElementById('input-category');
+const inputRememberFolder = document.getElementById('input-remember-folder');
+const inputDescription = document.getElementById('input-description');
+const btnAddCategory = document.getElementById('btn-add-category');
+
+function applyRememberedFolderFor(category) {
+  const remembered = getCategoryFolders()[category];
+  if (remembered) inputPath.value = remembered;
+  inputRememberFolder.checked = Boolean(remembered);
+}
+
+btnAdd.addEventListener('click', () => {
+  populateCategorySelect();
+  applyRememberedFolderFor(inputCategory.value);
+  modalAdd.classList.remove('hidden');
+});
 btnCancel.addEventListener('click', () => modalAdd.classList.add('hidden'));
+
+inputCategory.addEventListener('change', () => applyRememberedFolderFor(inputCategory.value));
+
+btnAddCategory.addEventListener('click', () => {
+  const name = prompt('ตั้งชื่อหมวดหมู่ใหม่:');
+  if (!name || !name.trim()) return;
+  const category = { key: slugifyCategory(name), label: name.trim(), icon: 'ti-folder' };
+  const custom = getCustomCategories();
+  custom.push(category);
+  saveCustomCategories(custom);
+  addSidebarCategoryNode(category);
+  populateCategorySelect();
+  inputCategory.value = category.key;
+  applyRememberedFolderFor(category.key);
+});
 
 inputUrl.addEventListener('change', () => detectYtDlpUrl(inputUrl.value.trim()));
 
@@ -119,30 +208,40 @@ function resolveDownloadTarget() {
     ? `${sanitizeForFilesystem(ytDlpTitle || 'video')}.mp4`
     : decodeURIComponent(url.split('/').filter(Boolean).pop() || 'download');
   const destPath = folder ? `${folder}\\${fileName}` : '';
-  return { url, folder, connections, format, headers, formatId, fileName, destPath };
+  const category = inputCategory.value;
+  const description = inputDescription.value.trim();
+  return { url, folder, connections, format, headers, formatId, fileName, destPath, category, description };
 }
 
 btnStart.addEventListener('click', async () => {
-  const { url, folder, connections, format, headers, formatId, fileName, destPath } = resolveDownloadTarget();
+  const { url, folder, connections, format, headers, formatId, fileName, destPath, category, description } = resolveDownloadTarget();
   if (!url || !folder) return;
 
+  if (inputRememberFolder.checked) rememberCategoryFolder(category, folder);
+
   const snapshot = await window.dlchan.startDownload({ url, destPath, connections, headers, formatId });
-  registerTask(snapshot.id, fileName, { url, destPath, connections, format, headers, formatId });
+  registerTask(snapshot.id, fileName, { url, destPath, connections, format, headers, formatId, category, description });
 
   modalAdd.classList.add('hidden');
   inputUrl.value = '';
   inputReferer.value = '';
+  inputDescription.value = '';
   inputQualityRow.classList.add('hidden');
 });
 
 // "Download later" hands the same URL/folder/connections off to the existing
 // scheduler modal instead of starting immediately — pick a time there.
+let pendingScheduleCategory = null;
+let pendingScheduleDescription = '';
+
 btnDownloadLater.addEventListener('click', () => {
-  const { url, folder, connections } = resolveDownloadTarget();
+  const { url, folder, connections, category, description } = resolveDownloadTarget();
   if (!url || !folder) return;
   scheduleUrl.value = url;
   schedulePath.value = folder;
   scheduleConnections.value = String(connections);
+  pendingScheduleCategory = category;
+  pendingScheduleDescription = description;
   modalAdd.classList.add('hidden');
   modalSchedule.classList.remove('hidden');
 });
@@ -321,14 +420,20 @@ window.dlchan.onClipboardDetected((data) => {
 
 // --- Tree filter -------------------------------------------------------------
 
-document.querySelectorAll('.tree-node').forEach((node) => {
+function wireTreeNode(node) {
   node.addEventListener('click', () => {
     document.querySelectorAll('.tree-node').forEach((n) => n.classList.remove('active'));
     node.classList.add('active');
     currentFilter = node.dataset.filter;
     renderQueue();
   });
-});
+}
+
+document.querySelectorAll('.tree-node').forEach(wireTreeNode);
+
+// Restore any custom categories the user created in a previous session.
+getCustomCategories().forEach(addSidebarCategoryNode);
+populateCategorySelect();
 
 // --- Column sort -------------------------------------------------------------
 
@@ -421,7 +526,8 @@ document.getElementById('btn-schedule-confirm').addEventListener('click', async 
 
   tasks.set(localId, {
     name: fileName,
-    category: categorize(fileName),
+    category: pendingScheduleCategory || categorize(fileName),
+    description: pendingScheduleDescription,
     lastBytes: 0,
     lastTime: Date.now(),
     speed: 0,
@@ -435,6 +541,8 @@ document.getElementById('btn-schedule-confirm').addEventListener('click', async 
     destPath,
     formatId
   });
+  pendingScheduleCategory = null;
+  pendingScheduleDescription = '';
 
   modalSchedule.classList.add('hidden');
   scheduleUrl.value = '';
@@ -453,7 +561,7 @@ setInterval(() => {
       if (task.status !== 'scheduled' || Date.now() < task.scheduledAt) return;
       tasks.delete(id);
       const snapshot = await window.dlchan.startDownload({ url: task.url, destPath: task.destPath, connections: task.connections || 8, headers: task.headers, formatId: task.formatId });
-      registerTask(snapshot.id, task.name, { url: task.url, destPath: task.destPath, connections: task.connections, headers: task.headers, formatId: task.formatId });
+      registerTask(snapshot.id, task.name, { url: task.url, destPath: task.destPath, connections: task.connections, headers: task.headers, formatId: task.formatId, category: task.category, description: task.description });
     });
   } else if ([...tasks.values()].some((t) => t.status === 'scheduled')) {
     renderQueue();
@@ -497,8 +605,8 @@ contextMenu.addEventListener('click', async (event) => {
       break;
     case 'redownload': {
       if (!task.url) return;
-      const snapshot = await window.dlchan.startDownload({ url: task.url, destPath: task.destPath, connections: task.connections || 8, headers: task.headers });
-      registerTask(snapshot.id, task.name, { url: task.url, destPath: task.destPath, connections: task.connections, headers: task.headers });
+      const snapshot = await window.dlchan.startDownload({ url: task.url, destPath: task.destPath, connections: task.connections || 8, headers: task.headers, formatId: task.formatId });
+      registerTask(snapshot.id, task.name, { url: task.url, destPath: task.destPath, connections: task.connections, headers: task.headers, formatId: task.formatId, category: task.category, description: task.description });
       break;
     }
     case 'priority-top': {
@@ -567,7 +675,8 @@ function formatCountdown(targetMs) {
 function registerTask(id, name, meta = {}) {
   tasks.set(id, {
     name,
-    category: categorize(name),
+    category: meta.category || categorize(name),
+    description: meta.description || '',
     lastBytes: 0,
     lastTime: Date.now(),
     speed: 0,
@@ -579,6 +688,8 @@ function registerTask(id, name, meta = {}) {
     url: meta.url || null,
     destPath: meta.destPath || null,
     format: meta.format || 'original',
+    headers: meta.headers,
+    formatId: meta.formatId,
     converted: false
   });
   renderQueue();
@@ -640,6 +751,7 @@ function renderQueue() {
       const row = document.createElement('div');
       row.className = `queue-row${task.status === 'paused' ? ' paused' : ''}${task.status === 'scheduled' ? ' scheduled' : ''}${id === selectedId ? ' selected' : ''}`;
       row.dataset.id = id;
+      if (task.description) row.title = task.description;
 
       const remaining = task.totalBytes - task.downloadedBytes;
       let eta = '--';
