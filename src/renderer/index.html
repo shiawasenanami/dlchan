@@ -54,6 +54,7 @@
         <button class="menu-panel-item" data-action="check-update"><i class="ti ti-refresh"></i> <span data-i18n="btnCheckUpdate">ตรวจสอบอัปเดตตอนนี้</span></button>
         <div class="menu-panel-sep"></div>
         <button class="menu-panel-item" data-action="license"><i class="ti ti-key"></i> <span data-i18n="menuLicense">ใบอนุญาต / ต่ออายุโค้ด</span></button>
+        <button id="menu-gift-code" class="menu-panel-item hidden" data-action="gift-code"><i class="ti ti-gift"></i> <span data-i18n="menuGiftCode">สร้างโค้ดของขวัญ (Admin)</span></button>
       </div>
     </div>
     <span class="menubar-brand">
@@ -329,6 +330,37 @@
       <div class="modal-actions">
         <button id="btn-license-close" class="btn btn-ghost hidden" data-i18n="btnClose">ปิด</button>
         <button id="btn-license-activate" class="btn btn-primary" data-i18n="btnActivateLicense">เปิดใช้งานโค้ด</button>
+      </div>
+    </div>
+  </div>
+
+  <!--
+    Only ever shown when licenseAdmin.isAdminAvailable() returns true, i.e.
+    only on Nakano's own dev machine where license-private.pem actually
+    exists (scripts/ never ships in the installer) — see menu-gift-code and
+    the JS gating in renderer.js.
+  -->
+  <div id="modal-gift-code" class="modal-overlay hidden">
+    <div class="modal">
+      <h2 data-i18n="giftCodeTitle">สร้างโค้ดของขวัญ (Admin)</h2>
+      <p class="welcome-sub" data-i18n="giftCodeSub">สร้างโค้ดใช้งานฟรีให้ใครสักคนแบบไม่ผ่านการจ่ายเงิน — ใช้ private key ในเครื่องนี้</p>
+      <label class="field-checkbox">
+        <input type="checkbox" id="gift-lifetime" />
+        <span data-i18n="giftLifetime">ใช้งานได้ตลอดชีพ</span>
+      </label>
+      <label class="field-label" for="gift-days" data-i18n="giftDays">จำนวนวันที่ใช้ได้</label>
+      <input id="gift-days" class="field-input" type="number" min="1" value="30" />
+      <label class="field-label" for="gift-note" data-i18n="giftNote">หมายเหตุ (เช่น ชื่อคนที่ให้)</label>
+      <input id="gift-note" class="field-input" type="text" placeholder="เช่น ให้คุณสมชายใช้ฟรี" />
+      <div id="gift-result" class="hidden">
+        <label class="field-label" data-i18n="giftResultLabel">โค้ดที่สร้าง</label>
+        <div class="code-box" id="gift-code-output"></div>
+      </div>
+      <p id="gift-error" class="license-error hidden"></p>
+      <div class="modal-actions">
+        <button id="btn-gift-close" class="btn btn-ghost" data-i18n="btnClose">ปิด</button>
+        <button id="btn-gift-copy" class="btn btn-ghost hidden" data-i18n="btnCopyCode">คัดลอกโค้ด</button>
+        <button id="btn-gift-generate" class="btn btn-primary" data-i18n="btnGenerateGiftCode">สร้างโค้ด</button>
       </div>
     </div>
   </div>

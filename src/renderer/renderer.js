@@ -942,6 +942,64 @@ document.getElementById('btn-license-buy').addEventListener('click', () => {
 statusLicense.addEventListener('click', () => openLicenseModal());
 statusLicense.style.cursor = 'pointer';
 
+// --- Gift code generator (dev-only admin tool) --------------------------------
+// Only visible/functional on Nakano's own machine — see licenseAdmin.js for why.
+
+const modalGiftCode = document.getElementById('modal-gift-code');
+const giftLifetime = document.getElementById('gift-lifetime');
+const giftDays = document.getElementById('gift-days');
+const giftNote = document.getElementById('gift-note');
+const giftResult = document.getElementById('gift-result');
+const giftCodeOutput = document.getElementById('gift-code-output');
+const giftError = document.getElementById('gift-error');
+const btnGiftGenerate = document.getElementById('btn-gift-generate');
+const btnGiftCopy = document.getElementById('btn-gift-copy');
+const btnGiftClose = document.getElementById('btn-gift-close');
+
+window.dlchan.isLicenseAdminAvailable().then((available) => {
+  if (available) document.getElementById('menu-gift-code').classList.remove('hidden');
+});
+
+function openGiftCodeModal() {
+  giftResult.classList.add('hidden');
+  btnGiftCopy.classList.add('hidden');
+  giftError.classList.add('hidden');
+  giftDays.value = '30';
+  giftLifetime.checked = false;
+  giftNote.value = '';
+  modalGiftCode.classList.remove('hidden');
+}
+
+giftLifetime.addEventListener('change', () => {
+  giftDays.disabled = giftLifetime.checked;
+});
+
+btnGiftGenerate.addEventListener('click', async () => {
+  giftError.classList.add('hidden');
+  const days = parseInt(giftDays.value, 10);
+  const lifetime = giftLifetime.checked;
+  const note = giftNote.value.trim();
+
+  const result = await window.dlchan.generateGiftCode({ days, lifetime, note });
+  if (!result.ok) {
+    giftError.textContent = result.error;
+    giftError.classList.remove('hidden');
+    return;
+  }
+
+  giftCodeOutput.textContent = result.code;
+  giftResult.classList.remove('hidden');
+  btnGiftCopy.classList.remove('hidden');
+});
+
+btnGiftCopy.addEventListener('click', () => {
+  navigator.clipboard.writeText(giftCodeOutput.textContent);
+  btnGiftCopy.textContent = 'คัดลอกแล้ว!';
+  setTimeout(() => { btnGiftCopy.textContent = window.i18n.t('btnCopyCode'); }, 1500);
+});
+
+btnGiftClose.addEventListener('click', () => modalGiftCode.classList.add('hidden'));
+
 btnLicenseActivate.addEventListener('click', async () => {
   const code = licenseCodeInput.value.trim();
   if (!code) return;
@@ -1008,7 +1066,8 @@ const MENU_ACTIONS = {
   },
   welcome: () => modalWelcome.classList.remove('hidden'),
   'check-update': () => document.getElementById('btn-check-update').click(),
-  license: () => openLicenseModal()
+  license: () => openLicenseModal(),
+  'gift-code': () => openGiftCodeModal()
 };
 
 document.querySelectorAll('.menu-panel-item[data-action]').forEach((btn) => {

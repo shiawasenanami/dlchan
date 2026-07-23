@@ -19,6 +19,8 @@ contextBridge.exposeInMainWorld('dlchan', {
   getExtensionPath: () => ipcRenderer.invoke('setup:get-extension-path'),
   getLicenseStatus: () => ipcRenderer.invoke('license:get-status'),
   activateLicense: (code) => ipcRenderer.invoke('license:activate', code),
+  isLicenseAdminAvailable: () => ipcRenderer.invoke('license:admin-is-available'),
+  generateGiftCode: (payload) => ipcRenderer.invoke('license:admin-generate-gift-code', payload),
   checkForUpdateNow: () => ipcRenderer.invoke('update:check-now'),
   openUpdateDownload: (url) => ipcRenderer.invoke('update:open-download', url),
   onUpdateAvailable: (callback) => ipcRenderer.on('update:available', (event, data) => callback(data)),

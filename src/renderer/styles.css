@@ -344,6 +344,17 @@ body.mascot-hidden .mascot-xs, body.mascot-hidden .mascot-sm { display: none; }
 
 .status-license { margin-left: auto; }
 
+.code-box {
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  font-family: monospace;
+  font-size: 12px;
+  word-break: break-all;
+  margin-bottom: 12px;
+}
+
 .update-toast {
   position: fixed;
   bottom: 20px;

@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, dialog, shell, clipboard, Tray, Menu } = re
 const path = require('path');
 const { DownloadManager, isHlsUrl, setGlobalSpeedLimit } = require('./downloadEngine');
 const { isYtDlpUrl, listFormats } = require('./ytdlp');
+const licenseAdmin = require('./licenseAdmin');
 const { startExtensionBridge } = require('./extensionBridge');
 const license = require('./license');
 const { checkForUpdate } = require('./updateChecker');
@@ -162,6 +163,17 @@ ipcMain.handle('setup:get-extension-path', () => EXTENSION_DIR);
 ipcMain.handle('license:get-status', () => license.getStatus());
 
 ipcMain.handle('license:activate', (event, code) => license.activate(code));
+
+ipcMain.handle('license:admin-is-available', () => licenseAdmin.isAdminAvailable());
+
+ipcMain.handle('license:admin-generate-gift-code', (event, { days, lifetime, note }) => {
+  try {
+    const { code } = licenseAdmin.generateGiftCode({ days, lifetime, note });
+    return { ok: true, code };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
 
 ipcMain.handle('update:check-now', () => runUpdateCheck());
 
