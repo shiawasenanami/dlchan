@@ -139,12 +139,32 @@ api.webRequest.onHeadersReceived.addListener(
   ['responseHeaders']
 );
 
-api.runtime.onMessage.addListener((message) => {
-  if (message.type !== 'DLCHAN_QUEUE') return;
-  const headers = detectedHeadersByUrl.get(message.url) || {};
-  fetch(`${BRIDGE}/queue`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url: message.url, filename: message.filename, connections: 8, headers })
-  }).catch(() => {});
+api.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'DLCHAN_QUEUE') {
+    const headers = detectedHeadersByUrl.get(message.url) || {};
+    fetch(`${BRIDGE}/queue`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url: message.url,
+        filename: message.filename,
+        connections: 8,
+        headers,
+        formatId: message.formatId
+      })
+    }).catch(() => {});
+    return;
+  }
+
+  if (message.type === 'DLCHAN_GET_FORMATS') {
+    fetch(`${BRIDGE}/formats`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: message.url })
+    })
+      .then((res) => res.json())
+      .then((data) => sendResponse(data))
+      .catch(() => sendResponse({ ok: false }));
+    return true; // keep the message channel open for the async sendResponse
+  }
 });

@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog, shell, clipboard, Tray, Menu } = require('electron');
 const path = require('path');
 const { DownloadManager, isHlsUrl, setGlobalSpeedLimit } = require('./downloadEngine');
+const { isYtDlpUrl, listFormats } = require('./ytdlp');
 const { startExtensionBridge } = require('./extensionBridge');
 const license = require('./license');
 const { checkForUpdate } = require('./updateChecker');
@@ -93,10 +94,12 @@ function normalizeHlsDest(destPath) {
   return destPath.replace(/\.m3u8$/i, '.ts');
 }
 
-ipcMain.handle('download:start', (event, { url, destPath, connections, headers }) => {
-  const task = (hlsEnabled && isHlsUrl(url))
-    ? downloadManager.createHlsTask({ url, destPath: normalizeHlsDest(destPath), connections, headers })
-    : downloadManager.createTask({ url, destPath, connections, headers });
+ipcMain.handle('download:start', (event, { url, destPath, connections, headers, formatId }) => {
+  const task = isYtDlpUrl(url)
+    ? downloadManager.createYtDlpTask({ url, destPath, formatId })
+    : (hlsEnabled && isHlsUrl(url))
+      ? downloadManager.createHlsTask({ url, destPath: normalizeHlsDest(destPath), connections, headers })
+      : downloadManager.createTask({ url, destPath, connections, headers });
   task.on('progress', (snapshot) => {
     mainWindow.webContents.send('download:progress', snapshot);
   });
@@ -106,6 +109,16 @@ ipcMain.handle('download:start', (event, { url, destPath, connections, headers }
   task.start();
   return task.progressSnapshot();
 });
+
+ipcMain.handle('download:list-formats', async (event, url) => {
+  try {
+    return { ok: true, ...(await listFormats(url)) };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
+
+ipcMain.handle('download:is-ytdlp-url', (event, url) => isYtDlpUrl(url));
 
 ipcMain.handle('download:pause', (event, id) => {
   downloadManager.get(id)?.pause();

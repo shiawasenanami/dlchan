@@ -4,6 +4,7 @@ const http = require('http');
 const https = require('https');
 const crypto = require('crypto');
 const { EventEmitter } = require('events');
+const { YtDlpTask } = require('./ytdlp');
 
 const PART_DIR_SUFFIX = '.dlchan-parts';
 
@@ -592,6 +593,13 @@ class DownloadManager {
   createHlsTask({ url, destPath, connections, headers }) {
     const id = String(this.nextId++);
     const task = new HlsDownloadTask({ id, url, destPath, connections, headers });
+    this.tasks.set(id, task);
+    return task;
+  }
+
+  createYtDlpTask({ url, destPath, formatId }) {
+    const id = String(this.nextId++);
+    const task = new YtDlpTask({ id, url, destPath, formatId });
     this.tasks.set(id, task);
     return task;
   }

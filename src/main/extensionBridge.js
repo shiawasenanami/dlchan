@@ -2,6 +2,7 @@ const http = require('http');
 const path = require('path');
 const { app } = require('electron');
 const { isHlsUrl } = require('./downloadEngine');
+const { isYtDlpUrl, listFormats } = require('./ytdlp');
 
 const BRIDGE_PORT = 47921;
 
@@ -49,15 +50,37 @@ function startExtensionBridge({ downloadManager, getMainWindow, isHlsEnabled = (
       return;
     }
 
+    if (req.method === 'POST' && req.url === '/formats') {
+      readJsonBody(req).then(async (body) => {
+        try {
+          const result = await listFormats(body.url);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: true, ...result }));
+        } catch (err) {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: false, error: err.message }));
+        }
+      }).catch(() => {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false }));
+      });
+      return;
+    }
+
     if (req.method === 'POST' && req.url === '/queue') {
       readJsonBody(req).then((body) => {
+        const ytDlp = isYtDlpUrl(body.url);
+        const hls = !ytDlp && isHlsEnabled() && isHlsUrl(body.url);
         const filename = body.filename || guessFilename(body.url);
-        const hls = isHlsEnabled() && isHlsUrl(body.url);
-        const destPath = path.join(app.getPath('downloads'), hls ? filename.replace(/\.m3u8$/i, '.ts') : filename);
+        const destPath = ytDlp
+          ? path.join(app.getPath('downloads'), sanitizeFilename(body.filename || 'video') + '.mp4')
+          : path.join(app.getPath('downloads'), hls ? filename.replace(/\.m3u8$/i, '.ts') : filename);
         const headers = body.headers || {};
-        const task = hls
-          ? downloadManager.createHlsTask({ url: body.url, destPath, connections: body.connections || 8, headers })
-          : downloadManager.createTask({ url: body.url, destPath, connections: body.connections || 8, headers });
+        const task = ytDlp
+          ? downloadManager.createYtDlpTask({ url: body.url, destPath, formatId: body.formatId })
+          : hls
+            ? downloadManager.createHlsTask({ url: body.url, destPath, connections: body.connections || 8, headers })
+            : downloadManager.createTask({ url: body.url, destPath, connections: body.connections || 8, headers });
         const win = getMainWindow();
         if (win) {
           task.on('progress', (snapshot) => win.webContents.send('download:progress', snapshot));
@@ -96,6 +119,10 @@ function readJsonBody(req) {
     });
     req.on('error', reject);
   });
+}
+
+function sanitizeFilename(name) {
+  return name.replace(/[\\/:*?"<>|]/g, '_').replace(/\s+/g, ' ').trim() || 'video';
 }
 
 function guessFilename(url) {

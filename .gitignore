@@ -1,6 +1,9 @@
 node_modules/
 release/
 
+# Downloaded by `npm run fetch:ytdlp` — large 3rd-party binary, not source
+vendor/
+
 # Build artifacts / secrets that must never leave this machine
 extension.pem
 extension.crx

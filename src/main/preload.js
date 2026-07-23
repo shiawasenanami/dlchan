@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld('dlchan', {
   version: '0.1.0',
   pickFolder: () => ipcRenderer.invoke('download:pick-folder'),
   startDownload: (payload) => ipcRenderer.invoke('download:start', payload),
+  listFormats: (url) => ipcRenderer.invoke('download:list-formats', url),
+  isYtDlpUrl: (url) => ipcRenderer.invoke('download:is-ytdlp-url', url),
   pauseDownload: (id) => ipcRenderer.invoke('download:pause', id),
   resumeDownload: (id) => ipcRenderer.invoke('download:resume', id),
   cancelDownload: (id) => ipcRenderer.invoke('download:cancel', id),

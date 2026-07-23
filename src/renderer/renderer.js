@@ -45,8 +45,56 @@ function categorize(filename) {
 
 // --- Add / start download -------------------------------------------------
 
+const inputQualityRow = document.getElementById('input-quality-row');
+const inputQuality = document.getElementById('input-quality');
+const btnDownloadLater = document.getElementById('btn-download-later');
+const ILLEGAL_FILENAME_CHARS = /[\\/:*?"<>|]/g;
+let ytDlpTitle = null; // filled in by detectYtDlpUrl(), used to name the output file
+
+function sanitizeForFilesystem(name) {
+  return name.replace(ILLEGAL_FILENAME_CHARS, '_').replace(/\s+/g, ' ').trim();
+}
+
+function formatQualityLabel(fmt) {
+  const bits = [];
+  if (fmt.height) bits.push(`${fmt.height}p`);
+  else if (fmt.isAudioOnly) bits.push('audio');
+  if (fmt.note) bits.push(fmt.note);
+  bits.push(fmt.ext);
+  if (fmt.tbr) bits.push(`${Math.round(fmt.tbr)}kbps`);
+  if (fmt.filesize) bits.push(`${(fmt.filesize / 1024 / 1024).toFixed(1)}MB`);
+  return bits.join(', ');
+}
+
+async function detectYtDlpUrl(url) {
+  ytDlpTitle = null;
+  inputQualityRow.classList.add('hidden');
+  inputQuality.innerHTML = '<option value="bv*+ba/b">ดีที่สุด</option>';
+  if (!url) return;
+
+  const isYtDlp = await window.dlchan.isYtDlpUrl(url).catch(() => false);
+  if (!isYtDlp) return;
+
+  inputQualityRow.classList.remove('hidden');
+  const result = await window.dlchan.listFormats(url).catch(() => null);
+  if (!result || !result.ok) return;
+
+  ytDlpTitle = result.title;
+  const heightSeen = new Set();
+  const options = ['<option value="bv*+ba/b">ดีที่สุด (แนะนำ)</option>'];
+  [...result.formats].reverse().forEach((fmt) => {
+    if (fmt.isVideoOnly && fmt.height && heightSeen.has(fmt.height)) return;
+    if (fmt.height) heightSeen.add(fmt.height);
+    const selector = fmt.isVideoOnly ? `${fmt.formatId}+ba/b` : fmt.formatId;
+    options.push(`<option value="${selector}">${formatQualityLabel(fmt)}</option>`);
+  });
+  inputQuality.innerHTML = options.join('');
+}
+
 btnAdd.addEventListener('click', () => modalAdd.classList.remove('hidden'));
 btnCancel.addEventListener('click', () => modalAdd.classList.add('hidden'));
+
+inputUrl.addEventListener('change', () => detectYtDlpUrl(inputUrl.value.trim()));
 
 btnBrowse.addEventListener('click', async () => {
   const folder = await window.dlchan.pickFolder();
@@ -58,24 +106,45 @@ btnBrowseDefault.addEventListener('click', async () => {
   if (folder) settingDefaultFolder.value = folder;
 });
 
-btnStart.addEventListener('click', async () => {
+function resolveDownloadTarget() {
   const url = inputUrl.value.trim();
   const folder = inputPath.value.trim();
   const connections = parseInt(inputConnections.value, 10);
   const format = document.getElementById('input-format').value;
-  if (!url || !folder) return;
-
-  const fileName = decodeURIComponent(url.split('/').filter(Boolean).pop() || 'download');
-  const destPath = `${folder}\\${fileName}`;
   const referer = inputReferer.value.trim();
   const headers = referer ? { referer } : undefined;
+  const isYtDlp = !inputQualityRow.classList.contains('hidden');
+  const formatId = isYtDlp ? inputQuality.value : undefined;
+  const fileName = isYtDlp
+    ? `${sanitizeForFilesystem(ytDlpTitle || 'video')}.mp4`
+    : decodeURIComponent(url.split('/').filter(Boolean).pop() || 'download');
+  const destPath = folder ? `${folder}\\${fileName}` : '';
+  return { url, folder, connections, format, headers, formatId, fileName, destPath };
+}
 
-  const snapshot = await window.dlchan.startDownload({ url, destPath, connections, headers });
-  registerTask(snapshot.id, fileName, { url, destPath, connections, format, headers });
+btnStart.addEventListener('click', async () => {
+  const { url, folder, connections, format, headers, formatId, fileName, destPath } = resolveDownloadTarget();
+  if (!url || !folder) return;
+
+  const snapshot = await window.dlchan.startDownload({ url, destPath, connections, headers, formatId });
+  registerTask(snapshot.id, fileName, { url, destPath, connections, format, headers, formatId });
 
   modalAdd.classList.add('hidden');
   inputUrl.value = '';
   inputReferer.value = '';
+  inputQualityRow.classList.add('hidden');
+});
+
+// "Download later" hands the same URL/folder/connections off to the existing
+// scheduler modal instead of starting immediately — pick a time there.
+btnDownloadLater.addEventListener('click', () => {
+  const { url, folder, connections } = resolveDownloadTarget();
+  if (!url || !folder) return;
+  scheduleUrl.value = url;
+  schedulePath.value = folder;
+  scheduleConnections.value = String(connections);
+  modalAdd.classList.add('hidden');
+  modalSchedule.classList.remove('hidden');
 });
 
 // --- Settings modal / tabs -------------------------------------------------
@@ -330,14 +399,23 @@ document.getElementById('btn-browse-schedule').addEventListener('click', async (
   if (folder) schedulePath.value = folder;
 });
 
-document.getElementById('btn-schedule-confirm').addEventListener('click', () => {
+document.getElementById('btn-schedule-confirm').addEventListener('click', async () => {
   const url = scheduleUrl.value.trim();
   const folder = schedulePath.value.trim();
   const connections = parseInt(scheduleConnections.value, 10);
   const at = scheduleTime.value ? new Date(scheduleTime.value).getTime() : Date.now();
   if (!url || !folder || !at) return;
 
-  const fileName = decodeURIComponent(url.split('/').filter(Boolean).pop() || 'download');
+  const isYtDlp = await window.dlchan.isYtDlpUrl(url).catch(() => false);
+  let fileName;
+  let formatId;
+  if (isYtDlp) {
+    const result = await window.dlchan.listFormats(url).catch(() => null);
+    fileName = `${sanitizeForFilesystem((result && result.title) || 'video')}.mp4`;
+    formatId = 'bv*+ba/b';
+  } else {
+    fileName = decodeURIComponent(url.split('/').filter(Boolean).pop() || 'download');
+  }
   const destPath = `${folder}\\${fileName}`;
   const localId = `sched-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
 
@@ -354,7 +432,8 @@ document.getElementById('btn-schedule-confirm').addEventListener('click', () => 
     addedAt: Date.now(),
     scheduledAt: at,
     url,
-    destPath
+    destPath,
+    formatId
   });
 
   modalSchedule.classList.add('hidden');
@@ -373,8 +452,8 @@ setInterval(() => {
     [...tasks.entries()].forEach(async ([id, task]) => {
       if (task.status !== 'scheduled' || Date.now() < task.scheduledAt) return;
       tasks.delete(id);
-      const snapshot = await window.dlchan.startDownload({ url: task.url, destPath: task.destPath, connections: task.connections || 8, headers: task.headers });
-      registerTask(snapshot.id, task.name, { url: task.url, destPath: task.destPath, connections: task.connections, headers: task.headers });
+      const snapshot = await window.dlchan.startDownload({ url: task.url, destPath: task.destPath, connections: task.connections || 8, headers: task.headers, formatId: task.formatId });
+      registerTask(snapshot.id, task.name, { url: task.url, destPath: task.destPath, connections: task.connections, headers: task.headers, formatId: task.formatId });
     });
   } else if ([...tasks.values()].some((t) => t.status === 'scheduled')) {
     renderQueue();

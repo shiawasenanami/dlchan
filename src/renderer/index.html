@@ -129,6 +129,12 @@
       </div>
       <label class="field-label" for="input-referer" data-i18n="fieldReferer">Referer (ใส่เฉพาะลิงก์ที่โหลดตรงๆ ไม่ได้)</label>
       <input id="input-referer" class="field-input" type="text" placeholder="https://site-ที่เจอลิงก์นี้/..." />
+      <div id="input-quality-row" class="hidden">
+        <label class="field-label" for="input-quality" data-i18n="fieldQuality">คุณภาพวิดีโอ</label>
+        <select id="input-quality" class="field-input">
+          <option value="bv*+ba/b" data-i18n="qualityBest">ดีที่สุด</option>
+        </select>
+      </div>
       <label class="field-label" for="input-connections" data-i18n="fieldConnections">จำนวนท่อดาวน์โหลด</label>
       <select id="input-connections" class="field-input">
         <option value="1" data-i18n="conn1">1 ท่อ</option>
@@ -152,6 +158,7 @@
       </select>
       <div class="modal-actions">
         <button id="btn-cancel" class="btn btn-ghost" data-i18n="btnCancel">ยกเลิก</button>
+        <button id="btn-download-later" class="btn btn-ghost" data-i18n="btnDownloadLater">ดาวน์โหลดภายหลัง</button>
         <button id="btn-start" class="btn btn-primary" data-i18n="btnStartDownload">เริ่มดาวน์โหลด</button>
       </div>
     </div>
