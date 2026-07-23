@@ -1,6 +1,6 @@
 {
   "name": "dl-chan",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "DL-chan — friendly download manager by Nakano Tabasa",
   "author": "Nakano Tabasa",
   "main": "src/main/main.js",
