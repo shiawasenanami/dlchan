@@ -68,12 +68,24 @@ function startExtensionBridge({ downloadManager, getMainWindow, isHlsEnabled = (
     }
 
     if (req.method === 'POST' && req.url === '/queue') {
-      readJsonBody(req).then((body) => {
+      readJsonBody(req).then(async (body) => {
         const ytDlp = isYtDlpUrl(body.url);
         const hls = !ytDlp && isHlsEnabled() && isHlsUrl(body.url);
-        const filename = body.filename || guessFilename(body.url);
+
+        // For yt-dlp URLs, never trust the client's guessed filename (often
+        // a meaningless CDN token) — ask yt-dlp for the real video title.
+        let filename = body.filename || guessFilename(body.url);
+        if (ytDlp) {
+          try {
+            const info = await listFormats(body.url);
+            filename = `${sanitizeFilename(info.title || 'video')}.mp4`;
+          } catch {
+            filename = `${sanitizeFilename(body.filename || 'video')}.mp4`;
+          }
+        }
+
         const destPath = ytDlp
-          ? path.join(app.getPath('downloads'), sanitizeFilename(body.filename || 'video') + '.mp4')
+          ? path.join(app.getPath('downloads'), filename)
           : path.join(app.getPath('downloads'), hls ? filename.replace(/\.m3u8$/i, '.ts') : filename);
         const headers = body.headers || {};
         const task = ytDlp

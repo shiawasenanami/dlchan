@@ -4,6 +4,27 @@ const VIDEO_EXT = /\.(mp4|webm|mkv|mov|ts|avi|flv)(\?|$)/i;
 const HLS_EXT = /\.m3u8(\?|$)/i;
 const MIN_SIZE_BYTES = 200 * 1024; // skip tiny thumbnails/preview clips
 
+// Mirrors src/main/ytdlp.js's YTDLP_DOMAINS. Sites in this list serve their
+// actual video from short-lived, signed CDN URLs (Facebook in particular) —
+// sniffing that URL off the network and re-requesting it later almost
+// always 403s or comes back corrupt, and its filename is a meaningless CDN
+// token. yt-dlp knows how to scrape these pages properly (real title, valid
+// format), so route the page URL there instead of the raw sniffed one.
+const YTDLP_DOMAINS = [
+  'youtube.com', 'youtu.be', 'twitter.com', 'x.com', 'tiktok.com',
+  'facebook.com', 'fb.watch', 'instagram.com', 'vimeo.com', 'twitch.tv',
+  'dailymotion.com', 'reddit.com', 'soundcloud.com', 'bilibili.com', 'niconico.jp'
+];
+
+function isYtDlpDomain(url) {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, '');
+    return YTDLP_DOMAINS.some((d) => host === d || host.endsWith(`.${d}`));
+  } catch {
+    return false;
+  }
+}
+
 function headerValue(headers, name) {
   const found = (headers || []).find((h) => h.name.toLowerCase() === name);
   return found ? found.value : null;
@@ -111,24 +132,31 @@ api.webRequest.onHeadersReceived.addListener(
     }
 
     const mediaType = isHls ? 'hls' : (isVideoType ? contentType.split('/')[0] : 'video');
+    const pageUrl = details.originUrl || details.documentUrl || '';
+    // On a known video-site page, target the PAGE itself (yt-dlp scrapes
+    // it properly) instead of the raw CDN URL we happened to sniff — that
+    // sniffed URL is often signed/short-lived and its filename is garbage.
+    const routeUrl = isYtDlpDomain(pageUrl) ? pageUrl : details.url;
 
     const tabTitlePromise = details.tabId >= 0
       ? api.tabs.get(details.tabId).then((tab) => tab.title).catch(() => null)
       : Promise.resolve(null);
 
     tabTitlePromise.then((pageTitle) => {
-      const filename = resolveFilename({ headers: details.responseHeaders, url: details.url, pageTitle });
-      if (!requestHeaders.referer) requestHeaders.referer = details.originUrl || details.documentUrl || '';
+      const filename = routeUrl === pageUrl
+        ? (pageTitle && pageTitle.trim() ? `${sanitizeForFilesystem(pageTitle.trim()).slice(0, 80)}.mp4` : 'video.mp4')
+        : resolveFilename({ headers: details.responseHeaders, url: details.url, pageTitle });
+      if (!requestHeaders.referer) requestHeaders.referer = pageUrl;
       if (detectedHeadersByUrl.size > 300) detectedHeadersByUrl.clear();
-      detectedHeadersByUrl.set(details.url, requestHeaders);
+      detectedHeadersByUrl.set(routeUrl, requestHeaders);
 
       fetch(`${BRIDGE}/detect`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: details.url, filename, pageUrl: details.originUrl || details.url, mediaType, headers: requestHeaders })
+        body: JSON.stringify({ url: routeUrl, filename, pageUrl: pageUrl || routeUrl, mediaType, headers: requestHeaders })
       }).then(() => {
         if (details.tabId >= 0) {
-          api.tabs.sendMessage(details.tabId, { type: 'DLCHAN_SHOW_BAR', filename, url: details.url }).catch(() => {});
+          api.tabs.sendMessage(details.tabId, { type: 'DLCHAN_SHOW_BAR', filename, url: routeUrl }).catch(() => {});
         }
       }).catch(() => {
         // DL-chan desktop app isn't running — stay silent, don't nag the user
