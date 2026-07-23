@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "DL-chan",
+  "version": "0.1.0",
+  "description": "จับลิงก์วิดีโอ/ไฟล์ระหว่างท่องเว็บ แล้วส่งให้ DL-chan โหลดให้แบบหลายท่อ",
+  "author": "Nakano Tabasa",
+  "permissions": ["webRequest", "tabs"],
+  "host_permissions": ["<all_urls>", "http://127.0.0.1:47921/*"],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["style.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "DL-chan",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  }
+}

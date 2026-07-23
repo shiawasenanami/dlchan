@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<title>DL-chan</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.47.0/iconfont/tabler-icons.min.css" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body data-theme="green">
+
+  <div class="menubar">
+    <button id="menu-tasks" class="menu-item" data-i18n="menuTasks">งาน</button>
+    <button id="menu-file" class="menu-item" data-i18n="menuFile">ไฟล์</button>
+    <button id="menu-downloads" class="menu-item" data-i18n="menuDownloads">การดาวน์โหลด</button>
+    <button id="menu-view" class="menu-item" data-i18n="menuView">มุมมอง</button>
+    <button id="menu-help" class="menu-item" data-i18n="menuHelp">วิธีใช้</button>
+    <span class="menubar-brand">
+      <svg class="mascot mascot-xs" viewBox="0 0 184 200" aria-hidden="true">
+        <path class="slime-body" d="M -92 10 Q -92 -55 -20 -68 Q 0 -72 20 -68 Q 92 -55 92 10 Q 92 78 0 88 Q -92 78 -92 10 Z" transform="translate(92,100)"/>
+        <ellipse class="eye" cx="60" cy="98" rx="15" ry="18"/>
+        <ellipse class="eye" cx="124" cy="98" rx="15" ry="18"/>
+        <circle class="pupil" cx="62" cy="103" r="8"/>
+        <circle class="pupil" cx="126" cy="103" r="8"/>
+        <path class="mouth" d="M 72 132 Q 92 148 112 132" />
+      </svg>
+      <span class="brand-name">DL-chan</span>
+    </span>
+  </div>
+
+  <div class="toolbar">
+    <button id="btn-add" class="tb-btn"><i class="ti ti-link-plus"></i><span data-i18n="tbAdd">เพิ่ม URL</span></button>
+    <div class="tb-sep"></div>
+    <button id="btn-resume-all" class="tb-btn"><i class="ti ti-player-play"></i><span data-i18n="tbResume">เล่นต่อ</span></button>
+    <button id="btn-pause-selected" class="tb-btn"><i class="ti ti-player-pause"></i><span data-i18n="tbPause">หยุด</span></button>
+    <button id="btn-stop-all" class="tb-btn"><i class="ti ti-square"></i><span data-i18n="tbStopAll">หยุดทั้งหมด</span></button>
+    <div class="tb-sep"></div>
+    <button id="btn-delete" class="tb-btn"><i class="ti ti-trash"></i><span data-i18n="tbDelete">ลบ</span></button>
+    <button id="btn-delete-done" class="tb-btn"><i class="ti ti-trash-x"></i><span data-i18n="tbDeleteDone">ลบที่เสร็จแล้ว</span></button>
+    <div class="tb-sep"></div>
+    <button id="btn-schedule" class="tb-btn"><i class="ti ti-clock"></i><span data-i18n="tbSchedule">ตั้งเวลา</span></button>
+    <button id="btn-settings" class="tb-btn"><i class="ti ti-settings"></i><span data-i18n="tbSettings">ตัวเลือก</span></button>
+  </div>
+
+  <main class="layout">
+    <nav class="sidebar">
+      <div class="tree-node tree-root active" data-filter="all"><i class="ti ti-folder"></i> <span data-i18n="treeAll">การดาวน์โหลดทั้งหมด</span></div>
+      <div class="tree-node" data-filter="category:compressed"><i class="ti ti-file-zip"></i> <span data-i18n="treeCompressed">บีบอัด</span></div>
+      <div class="tree-node" data-filter="category:documents"><i class="ti ti-file-text"></i> <span data-i18n="treeDocuments">เอกสาร</span></div>
+      <div class="tree-node" data-filter="category:music"><i class="ti ti-music"></i> <span data-i18n="treeMusic">เพลง</span></div>
+      <div class="tree-node" data-filter="category:programs"><i class="ti ti-apps"></i> <span data-i18n="treePrograms">โปรแกรม</span></div>
+      <div class="tree-node" data-filter="category:video"><i class="ti ti-video"></i> <span data-i18n="treeVideo">วิดีโอ</span></div>
+      <div class="tree-node" data-filter="status:unfinished"><i class="ti ti-progress"></i> <span data-i18n="treeUnfinished">ยังไม่เสร็จ</span></div>
+      <div class="tree-node" data-filter="status:finished"><i class="ti ti-circle-check"></i> <span data-i18n="treeFinished">เสร็จสิ้น</span></div>
+      <div class="tree-node" data-filter="status:queue"><i class="ti ti-list-numbers"></i> <span data-i18n="treeQueue">คิว</span></div>
+    </nav>
+
+    <section class="table-wrap">
+      <div class="table-header">
+        <div class="col col-name" data-sort="name" data-i18n="colName">ชื่อไฟล์</div>
+        <div class="col col-size" data-sort="size" data-i18n="colSize">ขนาด</div>
+        <div class="col col-status" data-sort="status" data-i18n="colStatus">สถานะ</div>
+        <div class="col col-eta" data-sort="eta" data-i18n="colEta">เวลาที่เหลือ</div>
+        <div class="col col-speed" data-sort="speed" data-i18n="colSpeed">ความเร็ว</div>
+        <div class="col col-added" data-sort="added" data-i18n="colAdded">วันที่เพิ่ม</div>
+      </div>
+      <div id="queue" class="table-body">
+        <div class="queue-empty" data-i18n="queueEmpty">ยังไม่มีงานดาวน์โหลด กด "เพิ่ม URL" เพื่อเริ่มต้น</div>
+      </div>
+    </section>
+  </main>
+
+  <div class="statusbar">
+    <span id="status-count">0 รายการ</span>
+    <span id="status-speed">รวม 0 KB/s</span>
+    <span id="status-license" class="status-license"></span>
+  </div>
+
+  <div id="modal-add" class="modal-overlay hidden">
+    <div class="modal">
+      <h2 data-i18n="addTitle">เพิ่มลิงก์ดาวน์โหลด</h2>
+      <label class="field-label" for="input-url">URL</label>
+      <input id="input-url" class="field-input" type="text" placeholder="https://..." />
+      <label class="field-label" for="input-path" data-i18n="fieldSaveTo">บันทึกไปที่</label>
+      <div class="path-row">
+        <input id="input-path" class="field-input" type="text" placeholder="C:\Users\...\Downloads" />
+        <button id="btn-browse" class="btn btn-ghost btn-sm"><i class="ti ti-folder"></i> <span data-i18n="btnBrowse">เลือกโฟลเดอร์</span></button>
+      </div>
+      <label class="field-label" for="input-referer" data-i18n="fieldReferer">Referer (ใส่เฉพาะลิงก์ที่โหลดตรงๆ ไม่ได้)</label>
+      <input id="input-referer" class="field-input" type="text" placeholder="https://site-ที่เจอลิงก์นี้/..." />
+      <label class="field-label" for="input-connections" data-i18n="fieldConnections">จำนวนท่อดาวน์โหลด</label>
+      <select id="input-connections" class="field-input">
+        <option value="1" data-i18n="conn1">1 ท่อ</option>
+        <option value="8" selected data-i18n="conn8">8 ท่อ</option>
+        <option value="16" data-i18n="conn16">16 ท่อ</option>
+        <option value="32" data-i18n="conn32">32 ท่อ</option>
+      </select>
+      <label class="field-label" for="input-format" data-i18n="fieldFormat">รูปแบบไฟล์ผลลัพธ์</label>
+      <select id="input-format" class="field-input">
+        <option value="original" data-i18n="fmtOriginal">ต้นฉบับ (ไม่แปลง)</option>
+        <optgroup label="Audio — lossy">
+          <option value="mp3" data-i18n="fmtMp3">MP3 (lossy)</option>
+          <option value="aac" data-i18n="fmtAac">AAC / M4A (lossy)</option>
+        </optgroup>
+        <optgroup label="Audio — lossless">
+          <option value="wav16" data-i18n="fmtWav16">WAV 16-bit (lossless)</option>
+          <option value="wav24" data-i18n="fmtWav24">WAV 24-bit (lossless)</option>
+          <option value="flac16" data-i18n="fmtFlac16">FLAC 16-bit (lossless)</option>
+          <option value="flac24" data-i18n="fmtFlac24">FLAC 24-bit (lossless)</option>
+        </optgroup>
+      </select>
+      <div class="modal-actions">
+        <button id="btn-cancel" class="btn btn-ghost" data-i18n="btnCancel">ยกเลิก</button>
+        <button id="btn-start" class="btn btn-primary" data-i18n="btnStartDownload">เริ่มดาวน์โหลด</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-popup" class="popup-toast hidden">
+    <svg class="mascot mascot-xs" viewBox="0 0 184 200" aria-hidden="true">
+      <path class="slime-body" d="M -92 10 Q -92 -55 -20 -68 Q 0 -72 20 -68 Q 92 -55 92 10 Q 92 78 0 88 Q -92 78 -92 10 Z" transform="translate(92,100)"/>
+      <ellipse class="eye" cx="60" cy="98" rx="15" ry="18"/>
+      <ellipse class="eye" cx="124" cy="98" rx="15" ry="18"/>
+      <circle class="pupil" cx="62" cy="103" r="8"/>
+      <circle class="pupil" cx="126" cy="103" r="8"/>
+      <path class="mouth" d="M 72 132 Q 92 148 112 132" />
+    </svg>
+    <div class="popup-text">
+      <div id="popup-title" class="popup-title">เจอวิดีโอในหน้านี้!</div>
+      <div id="popup-sub" class="popup-sub">อยากให้ DL-chan โหลดให้ไหม?</div>
+    </div>
+    <div class="popup-actions">
+      <button id="btn-popup-download" class="btn btn-success btn-sm" data-i18n="btnDownloadNow">ดาวน์โหลด</button>
+      <button id="btn-popup-dismiss" class="btn btn-warn btn-sm" data-i18n="btnNoThanks">ไม่เป็นไร</button>
+    </div>
+  </div>
+
+  <div id="modal-settings" class="modal-overlay hidden">
+    <div class="modal modal-wide">
+      <h2 data-i18n="optionsTitle">ตัวเลือก</h2>
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="tab-general" data-i18n="tabGeneral">ทั่วไป</button>
+        <button class="tab-btn" data-tab="tab-connection" data-i18n="tabConnection">การเชื่อมต่อ</button>
+        <button class="tab-btn" data-tab="tab-theme" data-i18n="tabTheme">ธีมสี</button>
+        <button class="tab-btn" data-tab="tab-language" data-i18n="tabLanguage">ภาษา</button>
+      </div>
+
+      <div id="tab-general" class="tab-panel active">
+        <label class="field-label" for="setting-default-folder" data-i18n="fieldDefaultFolder">โฟลเดอร์บันทึกเริ่มต้น</label>
+        <div class="path-row">
+          <input id="setting-default-folder" class="field-input" type="text" placeholder="C:\Users\...\Downloads" />
+          <button id="btn-browse-default" class="btn btn-ghost btn-sm"><i class="ti ti-folder"></i> <span data-i18n="btnBrowse">เลือกโฟลเดอร์</span></button>
+        </div>
+        <label class="checkbox-row">
+          <input id="setting-auto-categorize" type="checkbox" checked />
+          <span data-i18n="checkAutoCategorize">จัดหมวดหมู่ไฟล์อัตโนมัติตามนามสกุล</span>
+        </label>
+        <label class="checkbox-row">
+          <input id="setting-clipboard-monitor" type="checkbox" checked />
+          <span data-i18n="checkClipboard">ตรวจจับลิงก์ดาวน์โหลดจาก clipboard อัตโนมัติ</span>
+        </label>
+        <div class="welcome-divider"></div>
+        <p class="welcome-sub" id="version-text" data-i18n="versionLabel">เวอร์ชันปัจจุบัน: —</p>
+        <button id="btn-check-update" class="btn btn-ghost btn-sm"><i class="ti ti-refresh"></i> <span data-i18n="btnCheckUpdate">ตรวจสอบอัปเดตตอนนี้</span></button>
+        <p id="update-result-text" class="welcome-sub"></p>
+      </div>
+
+      <div id="tab-connection" class="tab-panel">
+        <label class="field-label" for="setting-connections" data-i18n="fieldConnections">จำนวนท่อดาวน์โหลดเริ่มต้น</label>
+        <select id="setting-connections" class="field-input">
+          <option value="1" data-i18n="conn1">1 ท่อ</option>
+          <option value="8" selected data-i18n="conn8">8 ท่อ</option>
+          <option value="16" data-i18n="conn16">16 ท่อ</option>
+          <option value="32" data-i18n="conn32">32 ท่อ</option>
+        </select>
+        <label class="field-label" for="setting-speed-limit" data-i18n="fieldSpeedLimit">จำกัดความเร็วสูงสุด (KB/s, 0 = ไม่จำกัด)</label>
+        <input id="setting-speed-limit" class="field-input" type="number" value="0" min="0" />
+      </div>
+
+      <div id="tab-theme" class="tab-panel">
+        <div class="theme-row">
+          <button class="theme-dot theme-green" data-theme="green" aria-label="เขียว"></button>
+          <button class="theme-dot theme-blue" data-theme="blue" aria-label="ฟ้า"></button>
+          <button class="theme-dot theme-orange" data-theme="orange" aria-label="ส้ม"></button>
+          <button class="theme-dot theme-pink" data-theme="pink" aria-label="ชมพู"></button>
+          <button class="theme-dot theme-purple" data-theme="purple" aria-label="ม่วง"></button>
+          <div class="theme-custom-wrap">
+            <input id="theme-custom-picker" type="color" value="#4cb85c" aria-label="กำหนดสีเอง" />
+            <span data-i18n="themeCustomLabel">กำหนดเอง</span>
+          </div>
+        </div>
+        <label class="checkbox-row">
+          <input id="setting-show-mascot" type="checkbox" checked />
+          <span data-i18n="checkShowMascot">แสดงมาสคอตสไลม์ (ปิดได้ถ้าอยากได้หน้าตาจริงจังแบบคลาสสิก)</span>
+        </label>
+      </div>
+
+      <div id="tab-language" class="tab-panel">
+        <label class="field-label" for="setting-language" data-i18n="fieldLanguage">ภาษา</label>
+        <select id="setting-language" class="field-input">
+          <option value="th">ไทย</option>
+          <option value="en">English</option>
+          <option value="ja">日本語</option>
+          <option value="zh">中文</option>
+          <option value="ko">한국어</option>
+          <option value="es">Español</option>
+        </select>
+      </div>
+
+      <div class="modal-actions">
+        <button id="btn-close-settings" class="btn btn-ghost" data-i18n="btnClose">ปิด</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-schedule" class="modal-overlay hidden">
+    <div class="modal">
+      <h2 data-i18n="scheduleTitle">ตั้งเวลาดาวน์โหลด</h2>
+      <label class="field-label" for="schedule-url">URL</label>
+      <input id="schedule-url" class="field-input" type="text" placeholder="https://..." />
+      <label class="field-label" for="schedule-path" data-i18n="fieldSaveTo">บันทึกไปที่</label>
+      <div class="path-row">
+        <input id="schedule-path" class="field-input" type="text" placeholder="C:\Users\...\Downloads" />
+        <button id="btn-browse-schedule" class="btn btn-ghost btn-sm"><i class="ti ti-folder"></i> <span data-i18n="btnBrowse">เลือกโฟลเดอร์</span></button>
+      </div>
+      <label class="field-label" for="schedule-connections" data-i18n="fieldConnections">จำนวนท่อดาวน์โหลด</label>
+      <select id="schedule-connections" class="field-input">
+        <option value="1" data-i18n="conn1">1 ท่อ</option>
+        <option value="8" selected data-i18n="conn8">8 ท่อ</option>
+        <option value="16" data-i18n="conn16">16 ท่อ</option>
+        <option value="32" data-i18n="conn32">32 ท่อ</option>
+      </select>
+      <label class="field-label" for="schedule-time" data-i18n="fieldScheduleTime">เริ่มดาวน์โหลดเวลา</label>
+      <input id="schedule-time" class="field-input" type="datetime-local" />
+      <div class="modal-actions">
+        <button id="btn-schedule-cancel" class="btn btn-ghost" data-i18n="btnCancel">ยกเลิก</button>
+        <button id="btn-schedule-confirm" class="btn btn-primary" data-i18n="btnSetSchedule">ตั้งเวลา</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="context-menu" class="context-menu hidden">
+    <button data-action="open-folder"><i class="ti ti-folder"></i> <span data-i18n="ctxOpenFolder">เปิดโฟลเดอร์</span></button>
+    <button data-action="copy-link"><i class="ti ti-copy"></i> <span data-i18n="ctxCopyLink">คัดลอกลิงก์</span></button>
+    <button data-action="redownload"><i class="ti ti-refresh"></i> <span data-i18n="ctxRedownload">ดาวน์โหลดซ้ำ</span></button>
+    <button data-action="priority-top"><i class="ti ti-arrow-up"></i> <span data-i18n="ctxPriorityTop">เลื่อนขึ้นบนสุด</span></button>
+    <div class="context-menu-sep"></div>
+    <button data-action="remove"><i class="ti ti-x"></i> <span data-i18n="ctxRemove">ยกเลิก/ลบ</span></button>
+  </div>
+
+  <div id="update-toast" class="update-toast hidden">
+    <div class="popup-text">
+      <div class="popup-title" data-i18n="updateToastTitle">มีเวอร์ชันใหม่ให้อัปเดต!</div>
+      <div id="update-toast-sub" class="popup-sub"></div>
+    </div>
+    <button id="btn-update-download" class="btn btn-primary btn-sm" data-i18n="btnDownloadUpdate">ดาวน์โหลดอัปเดต</button>
+    <button id="btn-update-dismiss" class="icon-btn" aria-label="ปิด"><i class="ti ti-x"></i></button>
+  </div>
+
+  <div id="modal-license" class="modal-overlay hidden">
+    <div class="modal">
+      <h2 id="license-title">ทดลองใช้งาน DL-chan</h2>
+      <p id="license-message" class="welcome-sub">กำลังตรวจสอบสถานะ...</p>
+      <label class="field-label" for="license-code-input" data-i18n="fieldLicenseCode">กรอกโค้ดใช้งาน (ถ้ามี)</label>
+      <input id="license-code-input" class="field-input" type="text" placeholder="วางโค้ดที่ได้รับที่นี่" />
+      <p id="license-error" class="license-error hidden"></p>
+      <div class="modal-actions">
+        <button id="btn-license-activate" class="btn btn-primary" data-i18n="btnActivateLicense">เปิดใช้งานโค้ด</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-welcome" class="modal-overlay hidden">
+    <div class="modal modal-wide">
+      <h2 data-i18n="welcomeTitle">ยินดีต้อนรับสู่ DL-chan</h2>
+      <p class="welcome-sub" data-i18n="welcomeSub">เลือกฟีเจอร์ที่อยากเปิดใช้งาน (ปรับทีหลังได้ที่ "ตัวเลือก")</p>
+
+      <label class="checkbox-row">
+        <input id="welcome-hls" type="checkbox" checked />
+        <span data-i18n="welcomeHls">รองรับดาวน์โหลดวิดีโอสตรีม HLS (.m3u8)</span>
+      </label>
+      <label class="checkbox-row">
+        <input id="welcome-clipboard" type="checkbox" checked />
+        <span data-i18n="checkClipboard">ตรวจจับลิงก์ดาวน์โหลดจาก clipboard อัตโนมัติ</span>
+      </label>
+      <label class="checkbox-row">
+        <input id="welcome-speedlimit" type="checkbox" checked />
+        <span data-i18n="welcomeSpeedlimit">เปิดใช้ตัวจำกัดความเร็วดาวน์โหลด (ตั้งค่าทีหลังได้)</span>
+      </label>
+      <label class="checkbox-row">
+        <input id="welcome-scheduler" type="checkbox" checked />
+        <span data-i18n="welcomeScheduler">ปุ่มตั้งเวลาดาวน์โหลดล่วงหน้า</span>
+      </label>
+      <label class="checkbox-row">
+        <input id="welcome-contextmenu" type="checkbox" checked />
+        <span data-i18n="welcomeContextmenu">เมนูคลิกขวา (เปิดโฟลเดอร์ / คัดลอกลิงก์ / ดาวน์โหลดซ้ำ)</span>
+      </label>
+
+      <div class="welcome-divider"></div>
+      <p class="welcome-sub" data-i18n="welcomeExtSub">ติดตั้ง Extension ให้ browser (จับวิดีโอ/ไฟล์ตอนดูเว็บ)</p>
+      <div class="welcome-browsers">
+        <button id="btn-ext-folder" class="btn btn-ghost btn-sm"><i class="ti ti-folder"></i> <span data-i18n="btnExtFolder">เปิดโฟลเดอร์ extension</span></button>
+        <button id="btn-ext-copy-path" class="btn btn-ghost btn-sm"><i class="ti ti-copy"></i> <span data-i18n="btnExtCopyPath">คัดลอก path</span></button>
+      </div>
+      <ol class="welcome-steps">
+        <li data-i18n="welcomeStepChrome">Chrome/Edge/Brave: เปิด <code>chrome://extensions</code> (หรือ <code>edge://extensions</code>) → เปิด Developer mode → Load unpacked → วางโฟลเดอร์ที่เปิดไว้</li>
+        <li data-i18n="welcomeStepFirefox">Firefox: เปิด <code>about:debugging#/runtime/this-firefox</code> → Load Temporary Add-on</li>
+      </ol>
+
+      <div class="modal-actions">
+        <button id="btn-welcome-done" class="btn btn-primary" data-i18n="btnGetStarted">เริ่มใช้งาน</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="i18n.js"></script>
+  <script src="renderer.js"></script>
+</body>
+</html>

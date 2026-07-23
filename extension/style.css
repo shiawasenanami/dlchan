@@ -1,0 +1,42 @@
+#dlchan-bar {
+  all: initial;
+  position: fixed;
+  top: 8px;
+  right: 16px;
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #eef7ea;
+  border: 1px solid #8fbf6b;
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-family: -apple-system, "Segoe UI", sans-serif;
+  font-size: 12px;
+  line-height: 1;
+  color: #2b4a1f;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+#dlchan-bar .dlchan-play {
+  color: #4cb85c;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+#dlchan-bar .dlchan-text {
+  cursor: pointer;
+  color: #2b4a1f;
+}
+
+#dlchan-bar .dlchan-text:hover {
+  text-decoration: underline;
+}
+
+#dlchan-bar .dlchan-close {
+  all: unset;
+  cursor: pointer;
+  color: #6b7a68;
+  font-size: 10px;
+  padding: 0 2px;
+}

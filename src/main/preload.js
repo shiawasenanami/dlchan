@@ -1,0 +1,28 @@
+const { contextBridge, ipcRenderer } = require('electron');
+
+contextBridge.exposeInMainWorld('dlchan', {
+  appName: 'DL-chan',
+  version: '0.1.0',
+  pickFolder: () => ipcRenderer.invoke('download:pick-folder'),
+  startDownload: (payload) => ipcRenderer.invoke('download:start', payload),
+  pauseDownload: (id) => ipcRenderer.invoke('download:pause', id),
+  resumeDownload: (id) => ipcRenderer.invoke('download:resume', id),
+  cancelDownload: (id) => ipcRenderer.invoke('download:cancel', id),
+  openInFolder: (destPath) => ipcRenderer.invoke('download:open-folder', destPath),
+  openPath: (folderPath) => ipcRenderer.invoke('shell:open-path', folderPath),
+  setSpeedLimit: (kbps) => ipcRenderer.invoke('settings:set-speed-limit', kbps),
+  setHlsEnabled: (enabled) => ipcRenderer.invoke('settings:set-hls-enabled', enabled),
+  openExtensionFolder: () => ipcRenderer.invoke('setup:open-extension-folder'),
+  getExtensionPath: () => ipcRenderer.invoke('setup:get-extension-path'),
+  getLicenseStatus: () => ipcRenderer.invoke('license:get-status'),
+  activateLicense: (code) => ipcRenderer.invoke('license:activate', code),
+  checkForUpdateNow: () => ipcRenderer.invoke('update:check-now'),
+  openUpdateDownload: (url) => ipcRenderer.invoke('update:open-download', url),
+  onUpdateAvailable: (callback) => ipcRenderer.on('update:available', (event, data) => callback(data)),
+  convertMedia: (payload) => ipcRenderer.invoke('media:convert', payload),
+  onProgress: (callback) => ipcRenderer.on('download:progress', (event, data) => callback(data)),
+  onError: (callback) => ipcRenderer.on('download:error', (event, data) => callback(data)),
+  onDetected: (callback) => ipcRenderer.on('bridge:detected', (event, data) => callback(data)),
+  onQueuedFromBrowser: (callback) => ipcRenderer.on('bridge:queued', (event, data) => callback(data)),
+  onClipboardDetected: (callback) => ipcRenderer.on('clipboard:detected', (event, data) => callback(data))
+});

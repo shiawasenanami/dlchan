@@ -1,0 +1,16 @@
+node_modules/
+release/
+
+# Build artifacts / secrets that must never leave this machine
+extension.pem
+extension.crx
+scripts/license-admin/license-private.pem
+scripts/license-admin/license-public.b64
+
+# Editor / OS cruft
+.DS_Store
+Thumbs.db
+
+# In-progress download parts (dev testing leftovers)
+*.dlchan-parts/
+*.dlchan-tmp
