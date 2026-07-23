@@ -55,6 +55,18 @@ body[data-theme="purple"] {
   --border: #e5d9f6;
 }
 
+/* Dark mode overrides the shared surface/text variables regardless of which
+   accent color theme is active — the accent-* variables stay as-is since
+   they're vivid enough to still read well against a dark background. */
+body.dark {
+  --bg-page: #14181a;
+  --bg-card: #1c2225;
+  --bg-sidebar: #20262a;
+  --text-main: #e6ede8;
+  --text-muted: #8b9a92;
+  --border: #2c3438;
+}
+
 * { box-sizing: border-box; }
 
 body {
@@ -176,13 +188,17 @@ body.mascot-hidden .mascot-xs, body.mascot-hidden .mascot-sm { display: none; }
 
 .popup-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
 
+/* Dark strip regardless of light/dark mode — same idea as classic
+   download-manager toolbars (colorful line icon + label underneath), just
+   drawn in DL-chan's own muted-vivid palette instead of copying anyone
+   else's exact colors. */
 .toolbar {
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 6px 10px;
-  background: var(--bg-card);
-  border-bottom: 1px solid var(--border);
+  padding: 10px 12px 8px;
+  background: #1b2320;
+  border-bottom: 1px solid #0f1412;
 }
 .tb-btn {
   border: none;
@@ -190,16 +206,29 @@ body.mascot-hidden .mascot-xs, body.mascot-hidden .mascot-sm { display: none; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
-  padding: 5px 9px;
-  border-radius: 6px;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 8px;
   cursor: pointer;
-  color: var(--text-main);
+  color: #eef3ef;
 }
-.tb-btn i { font-size: 18px; color: var(--accent-solid); }
-.tb-btn span { font-size: 10px; color: var(--text-muted); white-space: nowrap; }
-.tb-btn:hover { background: var(--bg-sidebar); }
-.tb-sep { width: 1px; align-self: stretch; margin: 4px 6px; background: var(--border); }
+.tb-btn i { font-size: 19px; color: var(--tb-icon, #8fd6a8); transition: transform 0.12s ease; }
+.tb-btn span { font-size: 10.5px; color: #aab8b0; white-space: nowrap; }
+.tb-btn:hover { background: rgba(255, 255, 255, 0.07); }
+.tb-btn:hover i { transform: translateY(-1px); }
+.tb-btn:active i { transform: translateY(0); }
+.tb-sep { width: 1px; align-self: stretch; margin: 4px 8px; background: rgba(255, 255, 255, 0.1); }
+
+/* One accent color per action, echoing the reference layout's per-icon
+   coloring without copying its exact palette. */
+#btn-add { --tb-icon: #5fd9c4; }
+#btn-resume-all { --tb-icon: #7fd858; }
+#btn-pause-selected { --tb-icon: #f0a63c; }
+#btn-stop-all { --tb-icon: #e8724f; }
+#btn-delete { --tb-icon: #ef6b9d; }
+#btn-delete-done { --tb-icon: #e05c8a; }
+#btn-schedule { --tb-icon: #5aa9e6; }
+#btn-settings { --tb-icon: #9c8cf0; }
 
 .layout { flex: 1; display: flex; overflow: hidden; }
 

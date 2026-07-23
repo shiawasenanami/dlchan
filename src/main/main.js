@@ -5,10 +5,43 @@ const { isYtDlpUrl, listFormats } = require('./ytdlp');
 const licenseAdmin = require('./licenseAdmin');
 const { startExtensionBridge } = require('./extensionBridge');
 const license = require('./license');
-const { checkForUpdate } = require('./updateChecker');
+const { autoUpdater } = require('electron-updater');
 const { convertFile } = require('./mediaConverter');
 
 const UPDATE_CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000; // every 4 hours, per product decision (see chat)
+
+// We drive the download/install steps ourselves from the renderer (so the
+// user sees a real progress bar and an explicit "restart to install"
+// moment) instead of letting electron-updater grab and install silently
+// the instant it finds something.
+autoUpdater.autoDownload = false;
+autoUpdater.autoInstallOnAppQuit = false;
+
+autoUpdater.on('update-available', (info) => {
+  mainWindow?.webContents.send('update:available', {
+    hasUpdate: true,
+    currentVersion: app.getVersion(),
+    latestVersion: info.version,
+    notes: typeof info.releaseNotes === 'string' ? info.releaseNotes : ''
+  });
+});
+
+autoUpdater.on('download-progress', (progress) => {
+  mainWindow?.webContents.send('update:download-progress', {
+    percent: progress.percent,
+    bytesPerSecond: progress.bytesPerSecond,
+    transferred: progress.transferred,
+    total: progress.total
+  });
+});
+
+autoUpdater.on('update-downloaded', () => {
+  mainWindow?.webContents.send('update:downloaded');
+});
+
+autoUpdater.on('error', (err) => {
+  mainWindow?.webContents.send('update:error', { message: err.message });
+});
 
 const downloadManager = new DownloadManager();
 let mainWindow;
@@ -78,11 +111,20 @@ function createTray() {
 }
 
 async function runUpdateCheck() {
-  const result = await checkForUpdate();
-  if (result.hasUpdate) {
-    mainWindow?.webContents.send('update:available', result);
+  // In dev (unpackaged) this throws/no-ops — electron-updater only makes
+  // sense against a real installed app.asar it can compare/replace.
+  if (!app.isPackaged) return { hasUpdate: false, currentVersion: app.getVersion(), error: 'dev build — auto-update disabled' };
+  try {
+    const result = await autoUpdater.checkForUpdates();
+    const latestVersion = result?.updateInfo?.version;
+    return {
+      hasUpdate: Boolean(latestVersion && latestVersion !== app.getVersion()),
+      currentVersion: app.getVersion(),
+      latestVersion
+    };
+  } catch (err) {
+    return { hasUpdate: false, currentVersion: app.getVersion(), error: err.message };
   }
-  return result;
 }
 
 ipcMain.handle('download:pick-folder', async () => {
@@ -154,6 +196,12 @@ ipcMain.handle('settings:set-hls-enabled', (event, enabled) => {
   hlsEnabled = !!enabled;
 });
 
+ipcMain.handle('settings:get-launch-on-startup', () => app.getLoginItemSettings().openAtLogin);
+
+ipcMain.handle('settings:set-launch-on-startup', (event, enabled) => {
+  app.setLoginItemSettings({ openAtLogin: !!enabled });
+});
+
 ipcMain.handle('setup:open-extension-folder', () => {
   shell.openPath(EXTENSION_DIR);
 });
@@ -176,6 +224,13 @@ ipcMain.handle('license:admin-generate-gift-code', (event, { days, lifetime, not
 });
 
 ipcMain.handle('update:check-now', () => runUpdateCheck());
+
+ipcMain.handle('update:download', () => autoUpdater.downloadUpdate());
+
+ipcMain.handle('update:install', () => {
+  isQuitting = true;
+  autoUpdater.quitAndInstall();
+});
 
 ipcMain.handle('update:open-download', (event, url) => shell.openExternal(url));
 

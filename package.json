@@ -1,6 +1,6 @@
 {
   "name": "dl-chan",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "DL-chan — friendly download manager by Nakano Tabasa",
   "author": "Nakano Tabasa",
   "main": "src/main/main.js",
@@ -39,6 +39,10 @@
         ]
       }
     ],
+    "artifactName": "${productName}-Setup-${version}.${ext}",
+    "publish": [
+      { "provider": "github", "owner": "shiawasenanami", "repo": "dlchan-releases" }
+    ],
     "win": {
       "target": "nsis",
       "icon": "assets/icon.ico"
@@ -51,6 +55,7 @@
     }
   },
   "dependencies": {
+    "electron-updater": "^6.8.9",
     "ffmpeg-static": "^5.3.0"
   }
 }

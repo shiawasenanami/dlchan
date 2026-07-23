@@ -22,7 +22,9 @@ const settingClipboardMonitor = document.getElementById('setting-clipboard-monit
 const settingSpeedLimit = document.getElementById('setting-speed-limit');
 
 const tasks = new Map(); // id -> task state
-let selectedId = null;
+const selectedIds = new Set();
+let lastClickedId = null; // anchor for shift-click range selection
+let lastRenderedOrder = []; // ids in the order last drawn, for shift-range + Ctrl+A
 let currentFilter = 'all';
 let sortKey = 'added';
 let sortDir = 1;
@@ -270,11 +272,37 @@ if (localStorage.getItem('dlchan-show-mascot') === '0') {
   document.body.classList.add('mascot-hidden');
 }
 
+// --- Dark mode --------------------------------------------------------------
+// Defaults to the OS-level preference on first run (no saved choice yet),
+// then remembers whatever the user explicitly picks afterwards.
+const settingDarkMode = document.getElementById('setting-dark-mode');
+const DARK_MODE_KEY = 'dlchan-dark-mode';
+
+function applyDarkMode(isDark) {
+  document.body.classList.toggle('dark', isDark);
+  settingDarkMode.checked = isDark;
+}
+
+const savedDarkMode = localStorage.getItem(DARK_MODE_KEY);
+const systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+applyDarkMode(savedDarkMode !== null ? savedDarkMode === '1' : systemPrefersDark);
+
+settingDarkMode.addEventListener('change', () => {
+  applyDarkMode(settingDarkMode.checked);
+  localStorage.setItem(DARK_MODE_KEY, settingDarkMode.checked ? '1' : '0');
+});
+
 if (localStorage.getItem('dlchan-clipboard-monitor') === '0') {
   settingClipboardMonitor.checked = false;
 }
 settingClipboardMonitor.addEventListener('change', () => {
   localStorage.setItem('dlchan-clipboard-monitor', settingClipboardMonitor.checked ? '1' : '0');
+});
+
+const settingLaunchOnStartup = document.getElementById('setting-launch-on-startup');
+window.dlchan.getLaunchOnStartup().then((enabled) => { settingLaunchOnStartup.checked = enabled; });
+settingLaunchOnStartup.addEventListener('change', () => {
+  window.dlchan.setLaunchOnStartup(settingLaunchOnStartup.checked);
 });
 
 const savedSpeedLimit = localStorage.getItem('dlchan-speed-limit');
@@ -459,7 +487,7 @@ document.getElementById('btn-resume-all').addEventListener('click', () => {
 });
 
 document.getElementById('btn-pause-selected').addEventListener('click', () => {
-  if (selectedId) window.dlchan.pauseDownload(selectedId);
+  selectedIds.forEach((id) => window.dlchan.pauseDownload(id));
 });
 
 document.getElementById('btn-stop-all').addEventListener('click', () => {
@@ -468,13 +496,17 @@ document.getElementById('btn-stop-all').addEventListener('click', () => {
   });
 });
 
-document.getElementById('btn-delete').addEventListener('click', () => {
-  if (!selectedId) return;
-  window.dlchan.cancelDownload(selectedId);
-  tasks.delete(selectedId);
-  selectedId = null;
+function deleteSelected() {
+  if (selectedIds.size === 0) return;
+  selectedIds.forEach((id) => {
+    window.dlchan.cancelDownload(id);
+    tasks.delete(id);
+  });
+  selectedIds.clear();
   renderQueue();
-});
+}
+
+document.getElementById('btn-delete').addEventListener('click', deleteSelected);
 
 document.getElementById('btn-delete-done').addEventListener('click', () => {
   tasks.forEach((task, id) => {
@@ -578,7 +610,14 @@ queueEl.addEventListener('contextmenu', (event) => {
   if (!row) return;
   event.preventDefault();
   contextMenuTargetId = row.dataset.id;
-  selectedId = row.dataset.id;
+  // Right-clicking a row already inside a multi-selection keeps the whole
+  // selection (so e.g. "remove" acts on all of them); right-clicking
+  // outside it replaces the selection with just that row, like Explorer.
+  if (!selectedIds.has(contextMenuTargetId)) {
+    selectedIds.clear();
+    selectedIds.add(contextMenuTargetId);
+    lastClickedId = contextMenuTargetId;
+  }
   renderQueue();
   contextMenu.style.left = `${event.clientX}px`;
   contextMenu.style.top = `${event.clientY}px`;
@@ -616,9 +655,12 @@ contextMenu.addEventListener('click', async (event) => {
       break;
     }
     case 'remove':
-      if (task.status !== 'scheduled') window.dlchan.cancelDownload(contextMenuTargetId);
-      tasks.delete(contextMenuTargetId);
-      if (selectedId === contextMenuTargetId) selectedId = null;
+      selectedIds.forEach((id) => {
+        const t = tasks.get(id);
+        if (t && t.status !== 'scheduled') window.dlchan.cancelDownload(id);
+        tasks.delete(id);
+      });
+      selectedIds.clear();
       renderQueue();
       break;
   }
@@ -742,6 +784,8 @@ function renderQueue() {
     return 0;
   });
 
+  lastRenderedOrder = entries.map(([id]) => id);
+
   if (entries.length === 0) {
     queueEl.innerHTML = `<div class="queue-empty">${window.i18n.t('queueEmpty')}</div>`;
   } else {
@@ -749,7 +793,7 @@ function renderQueue() {
     entries.forEach(([id, task]) => {
       const percent = task.totalBytes ? Math.round((task.downloadedBytes / task.totalBytes) * 100) : 0;
       const row = document.createElement('div');
-      row.className = `queue-row${task.status === 'paused' ? ' paused' : ''}${task.status === 'scheduled' ? ' scheduled' : ''}${id === selectedId ? ' selected' : ''}`;
+      row.className = `queue-row${task.status === 'paused' ? ' paused' : ''}${task.status === 'scheduled' ? ' scheduled' : ''}${selectedIds.has(id) ? ' selected' : ''}`;
       row.dataset.id = id;
       if (task.description) row.title = task.description;
 
@@ -783,8 +827,43 @@ function renderQueue() {
 queueEl.addEventListener('click', (event) => {
   const row = event.target.closest('.queue-row');
   if (!row) return;
-  selectedId = row.dataset.id;
+  const id = row.dataset.id;
+
+  if (event.shiftKey && lastClickedId) {
+    const fromIdx = lastRenderedOrder.indexOf(lastClickedId);
+    const toIdx = lastRenderedOrder.indexOf(id);
+    if (fromIdx !== -1 && toIdx !== -1) {
+      const [start, end] = fromIdx < toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx];
+      selectedIds.clear();
+      lastRenderedOrder.slice(start, end + 1).forEach((rowId) => selectedIds.add(rowId));
+    }
+  } else if (event.ctrlKey || event.metaKey) {
+    if (selectedIds.has(id)) selectedIds.delete(id);
+    else selectedIds.add(id);
+    lastClickedId = id;
+  } else {
+    selectedIds.clear();
+    selectedIds.add(id);
+    lastClickedId = id;
+  }
+
   renderQueue();
+});
+
+// Ctrl+A selects everything currently visible in the queue; Delete removes
+// whatever's selected — same as IDM/Explorer-style multi-select.
+document.addEventListener('keydown', (event) => {
+  const inTextField = ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName);
+  if (inTextField) return;
+
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
+    event.preventDefault();
+    selectedIds.clear();
+    lastRenderedOrder.forEach((id) => selectedIds.add(id));
+    renderQueue();
+  } else if (event.key === 'Delete') {
+    deleteSelected();
+  }
 });
 
 // --- IPC progress / error listeners -----------------------------------------------
@@ -1085,15 +1164,39 @@ const btnCheckUpdate = document.getElementById('btn-check-update');
 const updateResultText = document.getElementById('update-result-text');
 const updateToast = document.getElementById('update-toast');
 const updateToastSub = document.getElementById('update-toast-sub');
-const btnUpdateDownload = document.getElementById('btn-update-download');
+const updateProgressTrack = document.getElementById('update-progress-track');
+const updateProgressFill = document.getElementById('update-progress-fill');
+const btnUpdateAction = document.getElementById('btn-update-action');
 const btnUpdateDismiss = document.getElementById('btn-update-dismiss');
 
 versionText.textContent = `เวอร์ชันปัจจุบัน: ${window.dlchan.version}`;
 
+// Update flow is fully in-app: "ดาวน์โหลดอัปเดต" downloads it with a real
+// progress bar, then the same button becomes "รีสตาร์ตเพื่อติดตั้ง" — no
+// file ever gets handed to the user to run themselves.
+let updateState = 'idle'; // idle | available | downloading | downloaded
+
+function setUpdateButton(state) {
+  updateState = state;
+  if (state === 'available') {
+    btnUpdateAction.textContent = window.i18n.t('btnDownloadUpdate');
+    btnUpdateAction.disabled = false;
+    updateProgressTrack.classList.add('hidden');
+  } else if (state === 'downloading') {
+    btnUpdateAction.textContent = window.i18n.t('btnUpdateDownloading');
+    btnUpdateAction.disabled = true;
+    updateProgressTrack.classList.remove('hidden');
+  } else if (state === 'downloaded') {
+    btnUpdateAction.textContent = window.i18n.t('btnRestartToInstall');
+    btnUpdateAction.disabled = false;
+    updateProgressTrack.classList.add('hidden');
+  }
+}
+
 function showUpdateToast(result) {
   updateToastSub.textContent = `v${result.latestVersion} — ${result.notes || 'มีการอัปเดตใหม่'}`;
   updateToast.classList.remove('hidden');
-  updateToast.dataset.downloadUrl = result.downloadUrl;
+  setUpdateButton('available');
 }
 
 btnCheckUpdate.addEventListener('click', async () => {
@@ -1109,12 +1212,29 @@ btnCheckUpdate.addEventListener('click', async () => {
   }
 });
 
-btnUpdateDownload.addEventListener('click', () => {
-  window.dlchan.openUpdateDownload(updateToast.dataset.downloadUrl);
+btnUpdateAction.addEventListener('click', () => {
+  if (updateState === 'available') {
+    setUpdateButton('downloading');
+    window.dlchan.downloadUpdate();
+  } else if (updateState === 'downloaded') {
+    window.dlchan.installUpdate();
+  }
 });
 
 btnUpdateDismiss.addEventListener('click', () => updateToast.classList.add('hidden'));
 
 window.dlchan.onUpdateAvailable((result) => showUpdateToast(result));
+
+window.dlchan.onUpdateDownloadProgress((progress) => {
+  setUpdateButton('downloading');
+  updateProgressFill.style.width = `${Math.round(progress.percent)}%`;
+});
+
+window.dlchan.onUpdateDownloaded(() => setUpdateButton('downloaded'));
+
+window.dlchan.onUpdateError((err) => {
+  updateToastSub.textContent = `อัปเดตไม่สำเร็จ: ${err.message}`;
+  setUpdateButton('available');
+});
 
 renderQueue();

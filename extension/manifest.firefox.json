@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "DL-chan",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "จับลิงก์วิดีโอ/ไฟล์ระหว่างท่องเว็บ แล้วส่งให้ DL-chan โหลดให้แบบหลายท่อ",
   "author": "Nakano Tabasa",
   "permissions": ["webRequest", "tabs"],
