@@ -931,6 +931,14 @@ document.getElementById('btn-license-close').addEventListener('click', () => {
   modalLicense.classList.add('hidden');
 });
 
+// TODO(Nakano): point this at the real deployed URL from dlchan-license-server
+// once you've run `vercel --prod` — the Vercel dashboard shows the assigned
+// domain after first deploy.
+const BUY_LICENSE_URL = 'https://dlchan-license-server.vercel.app';
+document.getElementById('btn-license-buy').addEventListener('click', () => {
+  window.dlchan.openUpdateDownload(BUY_LICENSE_URL);
+});
+
 statusLicense.addEventListener('click', () => openLicenseModal());
 statusLicense.style.cursor = 'pointer';
 
