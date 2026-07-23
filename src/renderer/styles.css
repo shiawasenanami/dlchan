@@ -91,6 +91,45 @@ body {
 }
 .menu-item:hover { background: var(--bg-sidebar); }
 
+.menu-dropdown {
+  position: relative;
+  -webkit-app-region: no-drag;
+}
+.menu-panel {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 220px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  padding: 6px;
+  z-index: 50;
+  flex-direction: column;
+  gap: 1px;
+}
+.menu-dropdown.open .menu-panel { display: flex; }
+.menu-panel-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-main);
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.menu-panel-item:hover { background: var(--bg-sidebar); }
+.menu-panel-item i { font-size: 15px; width: 16px; text-align: center; opacity: 0.8; }
+.menu-panel-sep { height: 1px; background: var(--border); margin: 4px 2px; }
+
 .menubar-brand {
   margin-left: auto;
   display: flex;

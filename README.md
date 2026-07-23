@@ -75,28 +75,13 @@
 
 ---
 
-## 🧠 สถาปัตยกรรมการทำงาน
+## 🧠 มันทำงานยังไง
 
-```
-┌─────────────────────┐     HTTP (127.0.0.1:47921)     ┌──────────────────────────┐
-│  Browser Extension  │ ───────────────────────────▶  │   Electron Main Process   │
-│  (background.js)    │   /detect, /queue              │   extensionBridge.js       │
-│  ดักจับลิงก์วิดีโอ/    │                                 │   downloadEngine.js        │
-│  Referer/Cookie      │                                 │   (multi-connection +     │
-└─────────────────────┘                                 │    HLS downloader)        │
-                                                          │   updateChecker.js        │
-┌─────────────────────┐        IPC (contextBridge)      │   license.js               │
-│  Renderer (UI)       │ ◀──────────────────────────▶  │   mediaConverter.js        │
-│  renderer.js          │                                 └──────────────────────────┘
-│  คิวงาน / ตัวเลือก /   │
-│  หน้าต่างแอป           │
-└─────────────────────┘
-```
+<div align="center">
+<img src="assets/how-it-works.svg" width="100%" alt="แผนภาพการทำงานของ DL-chan: เว็บเบราว์เซอร์ → DL-chan → ไฟล์บนเครื่อง" />
+</div>
 
-- **`downloadEngine.js`** — หัวใจของโปรแกรม แบ่งไฟล์เป็นหลาย segment โหลดพร้อมกันด้วย HTTP Range request, merge กลับเป็นไฟล์เดียวแบบ atomic (เขียนลง temp file ก่อน rename ตอนเสร็จจริงเท่านั้น กันไฟล์ค้างเวลา error), และมี `HlsDownloadTask` แยกสำหรับ playlist `.m3u8` (parse master/media playlist, ถอดรหัส AES-128-CBC ถ้ามี key)
-- **`extensionBridge.js`** — เซิร์ฟเวอร์ HTTP loopback เล็กๆ ที่ extension คุยด้วย ไม่ต้องติดตั้ง native messaging host
-- **`updateChecker.js`** — เช็กเวอร์ชันใหม่จาก `latest.json` ใน [dlchan-releases](https://github.com/shiawasenanami/dlchan-releases)
-- **`license.js`** — ยืนยันโค้ดใช้งานด้วย Ed25519 signature verification (private key ไม่เคยอยู่ในตัวติดตั้ง)
+DL-chan อยู่เบื้องหลังคอยรับลิงก์จากสองทาง — จากส่วนขยายเบราว์เซอร์ที่จับลิงก์วิดีโอให้อัตโนมัติ หรือจากการวางลิงก์เองในแอป — แล้วแบ่งไฟล์นั้นเป็นหลายท่อโหลดพร้อมกัน ก่อนประกอบกลับเป็นไฟล์เดียวให้ในโฟลเดอร์ที่เลือกไว้ ถ้าโหลดล้มเหลวระหว่างทาง โปรแกรมจะไม่ทิ้งไฟล์ค้างครึ่งๆ กลางๆ ไว้ให้ต้องมานั่งลบเอง
 
 ---
 

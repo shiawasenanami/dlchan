@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('dlchan', {
   cancelDownload: (id) => ipcRenderer.invoke('download:cancel', id),
   openInFolder: (destPath) => ipcRenderer.invoke('download:open-folder', destPath),
   openPath: (folderPath) => ipcRenderer.invoke('shell:open-path', folderPath),
+  quitApp: () => ipcRenderer.invoke('app:quit'),
   setSpeedLimit: (kbps) => ipcRenderer.invoke('settings:set-speed-limit', kbps),
   setHlsEnabled: (enabled) => ipcRenderer.invoke('settings:set-hls-enabled', enabled),
   openExtensionFolder: () => ipcRenderer.invoke('setup:open-extension-folder'),

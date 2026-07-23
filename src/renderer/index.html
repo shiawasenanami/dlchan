@@ -9,11 +9,53 @@
 <body data-theme="green">
 
   <div class="menubar">
-    <button id="menu-tasks" class="menu-item" data-i18n="menuTasks">งาน</button>
-    <button id="menu-file" class="menu-item" data-i18n="menuFile">ไฟล์</button>
-    <button id="menu-downloads" class="menu-item" data-i18n="menuDownloads">การดาวน์โหลด</button>
-    <button id="menu-view" class="menu-item" data-i18n="menuView">มุมมอง</button>
-    <button id="menu-help" class="menu-item" data-i18n="menuHelp">วิธีใช้</button>
+    <div class="menu-dropdown">
+      <button id="menu-tasks" class="menu-item" data-i18n="menuTasks">งาน</button>
+      <div class="menu-panel">
+        <button class="menu-panel-item" data-action="add"><i class="ti ti-link-plus"></i> <span data-i18n="tbAdd">เพิ่ม URL</span></button>
+        <button class="menu-panel-item" data-action="resume-all"><i class="ti ti-player-play"></i> <span data-i18n="tbResume">เล่นต่อ</span></button>
+        <button class="menu-panel-item" data-action="pause-selected"><i class="ti ti-player-pause"></i> <span data-i18n="tbPause">หยุด</span></button>
+        <button class="menu-panel-item" data-action="stop-all"><i class="ti ti-square"></i> <span data-i18n="tbStopAll">หยุดทั้งหมด</span></button>
+        <div class="menu-panel-sep"></div>
+        <button class="menu-panel-item" data-action="delete"><i class="ti ti-trash"></i> <span data-i18n="tbDelete">ลบ</span></button>
+        <button class="menu-panel-item" data-action="delete-done"><i class="ti ti-trash-x"></i> <span data-i18n="tbDeleteDone">ลบที่เสร็จแล้ว</span></button>
+        <div class="menu-panel-sep"></div>
+        <button class="menu-panel-item" data-action="schedule"><i class="ti ti-clock"></i> <span data-i18n="tbSchedule">ตั้งเวลา</span></button>
+      </div>
+    </div>
+    <div class="menu-dropdown">
+      <button id="menu-file" class="menu-item" data-i18n="menuFile">ไฟล์</button>
+      <div class="menu-panel">
+        <button class="menu-panel-item" data-action="open-default-folder"><i class="ti ti-folder-open"></i> <span data-i18n="menuOpenFolder">เปิดโฟลเดอร์ดาวน์โหลด</span></button>
+        <button class="menu-panel-item" data-action="settings"><i class="ti ti-settings"></i> <span data-i18n="tbSettings">ตัวเลือก</span></button>
+        <div class="menu-panel-sep"></div>
+        <button class="menu-panel-item" data-action="quit"><i class="ti ti-power"></i> <span data-i18n="menuQuit">ออกจากโปรแกรม</span></button>
+      </div>
+    </div>
+    <div class="menu-dropdown">
+      <button id="menu-downloads" class="menu-item" data-i18n="menuDownloads">การดาวน์โหลด</button>
+      <div class="menu-panel">
+        <button class="menu-panel-item" data-action="settings-connection"><i class="ti ti-plug"></i> <span data-i18n="tabConnection">การเชื่อมต่อ</span></button>
+        <button class="menu-panel-item" data-action="settings-general"><i class="ti ti-adjustments"></i> <span data-i18n="tabGeneral">ทั่วไป</span></button>
+      </div>
+    </div>
+    <div class="menu-dropdown">
+      <button id="menu-view" class="menu-item" data-i18n="menuView">มุมมอง</button>
+      <div class="menu-panel">
+        <button class="menu-panel-item" data-action="toggle-mascot"><i class="ti ti-mood-smile"></i> <span data-i18n="checkShowMascot">แสดงมาสคอตสไลม์</span></button>
+        <button class="menu-panel-item" data-action="settings-theme"><i class="ti ti-palette"></i> <span data-i18n="tabTheme">ธีมสี</span></button>
+        <button class="menu-panel-item" data-action="settings-language"><i class="ti ti-language"></i> <span data-i18n="tabLanguage">ภาษา</span></button>
+      </div>
+    </div>
+    <div class="menu-dropdown">
+      <button id="menu-help" class="menu-item" data-i18n="menuHelp">วิธีใช้</button>
+      <div class="menu-panel">
+        <button class="menu-panel-item" data-action="welcome"><i class="ti ti-info-circle"></i> <span data-i18n="menuWelcomeGuide">คู่มือเริ่มต้นใช้งาน</span></button>
+        <button class="menu-panel-item" data-action="check-update"><i class="ti ti-refresh"></i> <span data-i18n="btnCheckUpdate">ตรวจสอบอัปเดตตอนนี้</span></button>
+        <div class="menu-panel-sep"></div>
+        <button class="menu-panel-item" data-action="license"><i class="ti ti-key"></i> <span data-i18n="menuLicense">ใบอนุญาต / ต่ออายุโค้ด</span></button>
+      </div>
+    </div>
     <span class="menubar-brand">
       <svg class="mascot mascot-xs" viewBox="0 0 184 200" aria-hidden="true">
         <path class="slime-body" d="M -92 10 Q -92 -55 -20 -68 Q 0 -72 20 -68 Q 92 -55 92 10 Q 92 78 0 88 Q -92 78 -92 10 Z" transform="translate(92,100)"/>
@@ -264,6 +306,7 @@
       <input id="license-code-input" class="field-input" type="text" placeholder="วางโค้ดที่ได้รับที่นี่" />
       <p id="license-error" class="license-error hidden"></p>
       <div class="modal-actions">
+        <button id="btn-license-close" class="btn btn-ghost hidden" data-i18n="btnClose">ปิด</button>
         <button id="btn-license-activate" class="btn btn-primary" data-i18n="btnActivateLicense">เปิดใช้งานโค้ด</button>
       </div>
     </div>

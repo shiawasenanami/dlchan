@@ -127,6 +127,11 @@ ipcMain.handle('shell:open-path', (event, folderPath) => {
   shell.openPath(folderPath);
 });
 
+ipcMain.handle('app:quit', () => {
+  isQuitting = true;
+  app.quit();
+});
+
 ipcMain.handle('settings:set-speed-limit', (event, kbps) => {
   setGlobalSpeedLimit((kbps || 0) * 1024);
 });

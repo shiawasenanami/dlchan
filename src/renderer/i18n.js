@@ -6,6 +6,8 @@
 const LOCALES = {
   th: {
     menuTasks: 'งาน', menuFile: 'ไฟล์', menuDownloads: 'การดาวน์โหลด', menuView: 'มุมมอง', menuHelp: 'วิธีใช้',
+    menuOpenFolder: 'เปิดโฟลเดอร์ดาวน์โหลด', menuQuit: 'ออกจากโปรแกรม',
+    menuWelcomeGuide: 'คู่มือเริ่มต้นใช้งาน', menuLicense: 'ใบอนุญาต / ต่ออายุโค้ด',
     tbAdd: 'เพิ่ม URL', tbResume: 'เล่นต่อ', tbPause: 'หยุด', tbStopAll: 'หยุดทั้งหมด',
     tbDelete: 'ลบ', tbDeleteDone: 'ลบที่เสร็จแล้ว', tbSchedule: 'ตั้งเวลา', tbSettings: 'ตัวเลือก',
     treeAll: 'การดาวน์โหลดทั้งหมด', treeCompressed: 'บีบอัด', treeDocuments: 'เอกสาร', treeMusic: 'เพลง',
@@ -46,6 +48,8 @@ const LOCALES = {
   },
   en: {
     menuTasks: 'Tasks', menuFile: 'File', menuDownloads: 'Downloads', menuView: 'View', menuHelp: 'Help',
+    menuOpenFolder: 'Open downloads folder', menuQuit: 'Quit',
+    menuWelcomeGuide: 'Getting started guide', menuLicense: 'License / renew code',
     tbAdd: 'Add URL', tbResume: 'Resume', tbPause: 'Pause', tbStopAll: 'Stop all',
     tbDelete: 'Delete', tbDeleteDone: 'Delete finished', tbSchedule: 'Schedule', tbSettings: 'Options',
     treeAll: 'All downloads', treeCompressed: 'Compressed', treeDocuments: 'Documents', treeMusic: 'Music',
@@ -86,6 +90,8 @@ const LOCALES = {
   },
   ja: {
     menuTasks: 'タスク', menuFile: 'ファイル', menuDownloads: 'ダウンロード', menuView: '表示', menuHelp: 'ヘルプ',
+    menuOpenFolder: 'ダウンロードフォルダを開く', menuQuit: '終了',
+    menuWelcomeGuide: 'はじめに', menuLicense: 'ライセンス / コード更新',
     tbAdd: 'URLを追加', tbResume: '再開', tbPause: '一時停止', tbStopAll: 'すべて停止',
     tbDelete: '削除', tbDeleteDone: '完了済みを削除', tbSchedule: 'スケジュール', tbSettings: '設定',
     treeAll: 'すべてのダウンロード', treeCompressed: '圧縮ファイル', treeDocuments: '書類', treeMusic: '音楽',

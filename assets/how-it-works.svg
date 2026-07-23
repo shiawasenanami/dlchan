@@ -1,0 +1,48 @@
+<svg viewBox="0 0 920 300" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI', 'Noto Sans Thai', sans-serif">
+  <rect width="920" height="300" fill="#ffffff"/>
+
+  <!-- Step 1: Browser -->
+  <g>
+    <rect x="30" y="70" width="220" height="160" rx="20" fill="#EAF6EC" stroke="#8FD19E" stroke-width="2"/>
+    <text x="140" y="115" font-size="40" text-anchor="middle">🌐</text>
+    <text x="140" y="155" font-size="17" font-weight="600" fill="#1f2d24" text-anchor="middle">เปิดเว็บ / เจอวิดีโอ</text>
+    <text x="140" y="180" font-size="13" fill="#4b5b50" text-anchor="middle">ส่วนขยายเบราว์เซอร์</text>
+    <text x="140" y="198" font-size="13" fill="#4b5b50" text-anchor="middle">จับลิงก์ให้อัตโนมัติ</text>
+  </g>
+
+  <!-- Arrow 1 -->
+  <g stroke="#8FD19E" stroke-width="3" fill="none">
+    <line x1="255" y1="150" x2="345" y2="150"/>
+    <polygon points="345,150 332,143 332,157" fill="#8FD19E"/>
+  </g>
+
+  <!-- Step 2: DL-chan app -->
+  <g>
+    <rect x="350" y="55" width="230" height="190" rx="20" fill="#E8F1FB" stroke="#7CB4E8" stroke-width="2"/>
+    <text x="465" y="105" font-size="40" text-anchor="middle">🐌</text>
+    <text x="465" y="150" font-size="18" font-weight="700" fill="#1c2a3a" text-anchor="middle">DL-chan</text>
+    <text x="465" y="175" font-size="13" fill="#3d5266" text-anchor="middle">แบ่งไฟล์เป็นหลายท่อ</text>
+    <text x="465" y="195" font-size="13" fill="#3d5266" text-anchor="middle">โหลดพร้อมกันแบบขนาน</text>
+    <text x="465" y="215" font-size="13" fill="#3d5266" text-anchor="middle">รองรับวิดีโอสตรีม (HLS)</text>
+  </g>
+
+  <!-- Arrow 2 -->
+  <g stroke="#7CB4E8" stroke-width="3" fill="none">
+    <line x1="585" y1="150" x2="675" y2="150"/>
+    <polygon points="675,150 662,143 662,157" fill="#7CB4E8"/>
+  </g>
+
+  <!-- Step 3: Saved file -->
+  <g>
+    <rect x="680" y="70" width="220" height="160" rx="20" fill="#FBF0E3" stroke="#E8B77A" stroke-width="2"/>
+    <text x="790" y="115" font-size="40" text-anchor="middle">📁</text>
+    <text x="790" y="155" font-size="17" font-weight="600" fill="#3a2a15" text-anchor="middle">ไฟล์พร้อมใช้งาน</text>
+    <text x="790" y="180" font-size="13" fill="#6b5232" text-anchor="middle">บันทึกลงเครื่องคุณ</text>
+    <text x="790" y="198" font-size="13" fill="#6b5232" text-anchor="middle">แปลงไฟล์เสียงได้ในตัว</text>
+  </g>
+
+  <!-- bottom note: manual paste path -->
+  <g fill="#8a8a8a" font-size="12">
+    <text x="465" y="272" text-anchor="middle">หรือวางลิงก์เองในแอปก็ได้ ไม่จำเป็นต้องใช้ส่วนขยายเบราว์เซอร์</text>
+  </g>
+</svg>

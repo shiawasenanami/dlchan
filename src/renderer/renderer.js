@@ -706,6 +706,43 @@ async function refreshLicenseStatus() {
   modalLicense.classList.remove('hidden');
 }
 
+// Opens the license modal on demand (menu item / status bar click) so a
+// licensed user can still renew early or swap in a new code, not just when
+// the trial/code has already expired.
+async function openLicenseModal() {
+  const status = await window.dlchan.getLicenseStatus();
+  const btnLicenseClose = document.getElementById('btn-license-close');
+  licenseError.classList.add('hidden');
+  licenseCodeInput.value = '';
+
+  if (status.licensed) {
+    btnLicenseClose.classList.remove('hidden');
+    if (status.mode === 'trial') {
+      licenseTitle.textContent = 'กำลังทดลองใช้งาน';
+      licenseMessage.textContent = `เหลือเวลาทดลองใช้งานอีก ${status.trialDaysLeft} วัน — ใส่โค้ดเพื่อเปิดใช้งานแบบเต็มได้เลย`;
+    } else if (status.mode === 'lifetime') {
+      licenseTitle.textContent = 'เปิดใช้งานแบบตลอดชีพแล้ว';
+      licenseMessage.textContent = 'ไม่ต้องต่ออายุ ขอบคุณที่สนับสนุน DL-chan!';
+    } else {
+      licenseTitle.textContent = 'ต่ออายุ / เปลี่ยนโค้ดใช้งาน';
+      licenseMessage.textContent = `เปิดใช้งานถึง ${new Date(status.expiresAt).toLocaleDateString('th-TH')} — กรอกโค้ดใหม่ที่นี่เพื่อต่ออายุ`;
+    }
+  } else {
+    btnLicenseClose.classList.add('hidden');
+    licenseTitle.textContent = status.savedCodeExpired ? 'โค้ดนี้หมดอายุแล้ว' : 'หมดเวลาทดลองใช้งาน';
+    licenseMessage.textContent = 'กรุณากรอกโค้ดใหม่เพื่อใช้งานต่อ';
+  }
+
+  modalLicense.classList.remove('hidden');
+}
+
+document.getElementById('btn-license-close').addEventListener('click', () => {
+  modalLicense.classList.add('hidden');
+});
+
+statusLicense.addEventListener('click', () => openLicenseModal());
+statusLicense.style.cursor = 'pointer';
+
 btnLicenseActivate.addEventListener('click', async () => {
   const code = licenseCodeInput.value.trim();
   if (!code) return;
@@ -725,25 +762,62 @@ setInterval(refreshLicenseStatus, 60 * 60 * 1000);
 
 // --- Menu bar ------------------------------------------------------------------
 
-document.getElementById('menu-tasks').addEventListener('click', () => btnAdd.click());
+const menuDropdowns = document.querySelectorAll('.menu-dropdown');
 
-document.getElementById('menu-file').addEventListener('click', () => {
-  const folder = settingDefaultFolder.value.trim() || inputPath.value.trim();
-  if (folder) window.dlchan.openPath(folder);
+function closeAllMenus() {
+  menuDropdowns.forEach((dd) => dd.classList.remove('open'));
+}
+
+menuDropdowns.forEach((dropdown) => {
+  const trigger = dropdown.querySelector('.menu-item');
+  trigger.addEventListener('click', (event) => {
+    event.stopPropagation();
+    const wasOpen = dropdown.classList.contains('open');
+    closeAllMenus();
+    if (!wasOpen) dropdown.classList.add('open');
+  });
 });
 
-document.getElementById('menu-downloads').addEventListener('click', () => {
+document.addEventListener('click', () => closeAllMenus());
+
+function openSettingsTab(tabId) {
   modalSettings.classList.remove('hidden');
-  document.querySelector('.tab-btn[data-tab="tab-connection"]').click();
-});
+  document.querySelector(`.tab-btn[data-tab="${tabId}"]`).click();
+}
 
-document.getElementById('menu-view').addEventListener('click', () => {
-  settingShowMascot.checked = !settingShowMascot.checked;
-  settingShowMascot.dispatchEvent(new Event('change'));
-});
+const MENU_ACTIONS = {
+  add: () => btnAdd.click(),
+  'resume-all': () => document.getElementById('btn-resume-all').click(),
+  'pause-selected': () => document.getElementById('btn-pause-selected').click(),
+  'stop-all': () => document.getElementById('btn-stop-all').click(),
+  delete: () => document.getElementById('btn-delete').click(),
+  'delete-done': () => document.getElementById('btn-delete-done').click(),
+  schedule: () => document.getElementById('btn-schedule').click(),
+  'open-default-folder': () => {
+    const folder = settingDefaultFolder.value.trim() || inputPath.value.trim();
+    if (folder) window.dlchan.openPath(folder);
+  },
+  settings: () => modalSettings.classList.remove('hidden'),
+  quit: () => window.dlchan.quitApp(),
+  'settings-connection': () => openSettingsTab('tab-connection'),
+  'settings-general': () => openSettingsTab('tab-general'),
+  'settings-theme': () => openSettingsTab('tab-theme'),
+  'settings-language': () => openSettingsTab('tab-language'),
+  'toggle-mascot': () => {
+    settingShowMascot.checked = !settingShowMascot.checked;
+    settingShowMascot.dispatchEvent(new Event('change'));
+  },
+  welcome: () => modalWelcome.classList.remove('hidden'),
+  'check-update': () => document.getElementById('btn-check-update').click(),
+  license: () => openLicenseModal()
+};
 
-document.getElementById('menu-help').addEventListener('click', () => {
-  modalWelcome.classList.remove('hidden');
+document.querySelectorAll('.menu-panel-item[data-action]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    closeAllMenus();
+    const action = MENU_ACTIONS[btn.dataset.action];
+    if (action) action();
+  });
 });
 
 // --- Update checker ------------------------------------------------------------
