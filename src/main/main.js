@@ -2,7 +2,6 @@ const { app, BrowserWindow, ipcMain, dialog, shell, clipboard, Tray, Menu } = re
 const path = require('path');
 const { DownloadManager, isHlsUrl, setGlobalSpeedLimit } = require('./downloadEngine');
 const { isYtDlpUrl, listFormats } = require('./ytdlp');
-const licenseAdmin = require('./licenseAdmin');
 const { startExtensionBridge } = require('./extensionBridge');
 const license = require('./license');
 const { autoUpdater } = require('electron-updater');
@@ -52,6 +51,7 @@ let tray;
 let isQuitting = false;
 
 const EXTENSION_DIR = path.join(__dirname, '..', '..', 'extension');
+const LICENSE_SERVER_URL = 'https://dlchan-license-server.vercel.app';
 
 const CLIPBOARD_URL_RE = /https?:\/\/\S+\.(zip|rar|7z|exe|msi|pdf|mp3|mp4|mkv|webm|m3u8|apk|dmg)(\?\S*)?/i;
 const seenClipboardUrls = new Set();
@@ -212,12 +212,44 @@ ipcMain.handle('license:get-status', () => license.getStatus());
 
 ipcMain.handle('license:activate', (event, code) => license.activate(code));
 
-ipcMain.handle('license:admin-is-available', () => licenseAdmin.isAdminAvailable());
-
-ipcMain.handle('license:admin-generate-gift-code', (event, { days, lifetime, note }) => {
+ipcMain.handle('license:admin-generate-gift-code', async (event, { username, password, totpCode, days, lifetime, note }) => {
   try {
-    const { code } = licenseAdmin.generateGiftCode({ days, lifetime, note });
-    return { ok: true, code };
+    const res = await fetch(`${LICENSE_SERVER_URL}/api/admin-generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password, totpCode, days, lifetime, note })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) return { ok: false, error: data.error || 'สร้างโค้ดไม่สำเร็จ' };
+    return { ok: true, code: data.code };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
+
+ipcMain.handle('bug:report', async (event, { message }) => {
+  try {
+    const res = await fetch(`${LICENSE_SERVER_URL}/api/bug-report`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, appVersion: app.getVersion(), os: `${process.platform} ${require('os').release()}` })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) return { ok: false, error: data.error || 'ส่งรายงานไม่สำเร็จ' };
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
+
+ipcMain.handle('license:register', async (event, { name, email, code }) => {
+  try {
+    const res = await fetch(`${LICENSE_SERVER_URL}/api/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, code })
+    });
+    return await res.json();
   } catch (err) {
     return { ok: false, error: err.message };
   }

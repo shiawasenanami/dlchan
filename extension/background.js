@@ -150,14 +150,13 @@ api.webRequest.onHeadersReceived.addListener(
       if (detectedHeadersByUrl.size > 300) detectedHeadersByUrl.clear();
       detectedHeadersByUrl.set(routeUrl, requestHeaders);
 
+      // Still relayed to the desktop app so its own in-app "detected!" popup
+      // works — the in-page overlay (content.js) no longer needs this
+      // message, it scans the DOM for <video> elements on its own.
       fetch(`${BRIDGE}/detect`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: routeUrl, filename, pageUrl: pageUrl || routeUrl, mediaType, headers: requestHeaders })
-      }).then(() => {
-        if (details.tabId >= 0) {
-          api.tabs.sendMessage(details.tabId, { type: 'DLCHAN_SHOW_BAR', filename, url: routeUrl }).catch(() => {});
-        }
       }).catch(() => {
         // DL-chan desktop app isn't running — stay silent, don't nag the user
       });

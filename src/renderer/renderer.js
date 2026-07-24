@@ -1021,10 +1021,14 @@ document.getElementById('btn-license-buy').addEventListener('click', () => {
 statusLicense.addEventListener('click', () => openLicenseModal());
 statusLicense.style.cursor = 'pointer';
 
-// --- Gift code generator (dev-only admin tool) --------------------------------
-// Only visible/functional on Nakano's own machine — see licenseAdmin.js for why.
+// --- Gift code generator (password + 2FA, checked by the license server) -----
+// The signing key lives only on dlchan-license-server now, never on this
+// machine, so this works from any installed copy of DL-chan.
 
 const modalGiftCode = document.getElementById('modal-gift-code');
+const giftUsername = document.getElementById('gift-username');
+const giftPassword = document.getElementById('gift-password');
+const giftTotp = document.getElementById('gift-totp');
 const giftLifetime = document.getElementById('gift-lifetime');
 const giftDays = document.getElementById('gift-days');
 const giftNote = document.getElementById('gift-note');
@@ -1035,14 +1039,11 @@ const btnGiftGenerate = document.getElementById('btn-gift-generate');
 const btnGiftCopy = document.getElementById('btn-gift-copy');
 const btnGiftClose = document.getElementById('btn-gift-close');
 
-window.dlchan.isLicenseAdminAvailable().then((available) => {
-  if (available) document.getElementById('menu-gift-code').classList.remove('hidden');
-});
-
 function openGiftCodeModal() {
   giftResult.classList.add('hidden');
   btnGiftCopy.classList.add('hidden');
   giftError.classList.add('hidden');
+  giftTotp.value = '';
   giftDays.value = '30';
   giftLifetime.checked = false;
   giftNote.value = '';
@@ -1055,11 +1056,20 @@ giftLifetime.addEventListener('change', () => {
 
 btnGiftGenerate.addEventListener('click', async () => {
   giftError.classList.add('hidden');
+  const username = giftUsername.value.trim();
+  const password = giftPassword.value;
+  const totpCode = giftTotp.value.trim();
   const days = parseInt(giftDays.value, 10);
   const lifetime = giftLifetime.checked;
   const note = giftNote.value.trim();
 
-  const result = await window.dlchan.generateGiftCode({ days, lifetime, note });
+  if (!username || !password || !/^\d{6}$/.test(totpCode)) {
+    giftError.textContent = 'กรุณากรอกชื่อผู้ใช้ รหัสผ่าน และรหัส 2FA 6 หลักให้ครบ';
+    giftError.classList.remove('hidden');
+    return;
+  }
+
+  const result = await window.dlchan.generateGiftCode({ username, password, totpCode, days, lifetime, note });
   if (!result.ok) {
     giftError.textContent = result.error;
     giftError.classList.remove('hidden');
@@ -1079,6 +1089,41 @@ btnGiftCopy.addEventListener('click', () => {
 
 btnGiftClose.addEventListener('click', () => modalGiftCode.classList.add('hidden'));
 
+// --- Bug report -------------------------------------------------------------
+// Deliberately just one field — the point is to make reporting friction-free,
+// not to collect a support ticket's worth of structured info.
+
+const modalBugReport = document.getElementById('modal-bug-report');
+const bugReportMessage = document.getElementById('bug-report-message');
+const bugReportStatus = document.getElementById('bug-report-status');
+const btnBugReportSend = document.getElementById('btn-bug-report-send');
+
+function openBugReportModal() {
+  bugReportMessage.value = '';
+  bugReportStatus.classList.add('hidden');
+  modalBugReport.classList.remove('hidden');
+}
+
+document.getElementById('btn-bug-report-close').addEventListener('click', () => modalBugReport.classList.add('hidden'));
+
+btnBugReportSend.addEventListener('click', async () => {
+  const message = bugReportMessage.value.trim();
+  if (!message) return;
+  btnBugReportSend.disabled = true;
+  const result = await window.dlchan.reportBug(message);
+  btnBugReportSend.disabled = false;
+  bugReportStatus.classList.remove('hidden');
+  if (result.ok) {
+    bugReportStatus.textContent = window.i18n.t('bugReportSent');
+    setTimeout(() => modalBugReport.classList.add('hidden'), 1200);
+  } else {
+    bugReportStatus.textContent = `${window.i18n.t('bugReportFailed')}: ${result.error}`;
+  }
+});
+
+const licenseNameInput = document.getElementById('license-name-input');
+const licenseEmailInput = document.getElementById('license-email-input');
+
 btnLicenseActivate.addEventListener('click', async () => {
   const code = licenseCodeInput.value.trim();
   if (!code) return;
@@ -1087,6 +1132,15 @@ btnLicenseActivate.addEventListener('click', async () => {
     licenseError.classList.add('hidden');
     licenseCodeInput.value = '';
     refreshLicenseStatus();
+
+    // Best-effort registration record — activation above already succeeded
+    // locally (fully offline signature check), this is just Nakano's own
+    // record of who's using which code. Never blocks the user either way.
+    const name = licenseNameInput.value.trim();
+    const email = licenseEmailInput.value.trim();
+    if (name && email) {
+      window.dlchan.registerLicense({ name, email, code }).catch(() => {});
+    }
   } else {
     licenseError.textContent = result.reason;
     licenseError.classList.remove('hidden');
@@ -1146,7 +1200,8 @@ const MENU_ACTIONS = {
   welcome: () => modalWelcome.classList.remove('hidden'),
   'check-update': () => document.getElementById('btn-check-update').click(),
   license: () => openLicenseModal(),
-  'gift-code': () => openGiftCodeModal()
+  'gift-code': () => openGiftCodeModal(),
+  'bug-report': () => openBugReportModal()
 };
 
 document.querySelectorAll('.menu-panel-item[data-action]').forEach((btn) => {

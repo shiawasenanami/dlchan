@@ -54,7 +54,9 @@
         <button class="menu-panel-item" data-action="check-update"><i class="ti ti-refresh"></i> <span data-i18n="btnCheckUpdate">ตรวจสอบอัปเดตตอนนี้</span></button>
         <div class="menu-panel-sep"></div>
         <button class="menu-panel-item" data-action="license"><i class="ti ti-key"></i> <span data-i18n="menuLicense">ใบอนุญาต / ต่ออายุโค้ด</span></button>
-        <button id="menu-gift-code" class="menu-panel-item hidden" data-action="gift-code"><i class="ti ti-gift"></i> <span data-i18n="menuGiftCode">สร้างโค้ดของขวัญ (Admin)</span></button>
+        <button id="menu-gift-code" class="menu-panel-item" data-action="gift-code"><i class="ti ti-gift"></i> <span data-i18n="menuGiftCode">สร้างโค้ดของขวัญ (Admin)</span></button>
+        <div class="menu-panel-sep"></div>
+        <button class="menu-panel-item" data-action="bug-report"><i class="ti ti-message-report"></i> <span data-i18n="menuBugReport">แจ้งปัญหา / ข้อเสนอแนะ</span></button>
       </div>
     </div>
     <span class="menubar-brand">
@@ -330,6 +332,10 @@
     <div class="modal">
       <h2 id="license-title">ทดลองใช้งาน DL-chan</h2>
       <p id="license-message" class="welcome-sub">กำลังตรวจสอบสถานะ...</p>
+      <label class="field-label" for="license-name-input" data-i18n="fieldRegisterName">ชื่อของคุณ</label>
+      <input id="license-name-input" class="field-input" type="text" placeholder="ชื่อ-นามสกุล" />
+      <label class="field-label" for="license-email-input" data-i18n="fieldRegisterEmail">อีเมล</label>
+      <input id="license-email-input" class="field-input" type="email" placeholder="you@example.com" />
       <label class="field-label" for="license-code-input" data-i18n="fieldLicenseCode">กรอกโค้ดใช้งาน (ถ้ามี)</label>
       <input id="license-code-input" class="field-input" type="text" placeholder="วางโค้ดที่ได้รับที่นี่" />
       <p id="license-error" class="license-error hidden"></p>
@@ -343,16 +349,19 @@
     </div>
   </div>
 
-  <!--
-    Only ever shown when licenseAdmin.isAdminAvailable() returns true, i.e.
-    only on Nakano's own dev machine where license-private.pem actually
-    exists (scripts/ never ships in the installer) — see menu-gift-code and
-    the JS gating in renderer.js.
-  -->
+  <!-- Password + 2FA checked server-side (dlchan-license-server) — the
+       signing key never has to be on this machine, so this works from any
+       installed copy of DL-chan, not just a dev checkout. -->
   <div id="modal-gift-code" class="modal-overlay hidden">
     <div class="modal">
       <h2 data-i18n="giftCodeTitle">สร้างโค้ดของขวัญ (Admin)</h2>
-      <p class="welcome-sub" data-i18n="giftCodeSub">สร้างโค้ดใช้งานฟรีให้ใครสักคนแบบไม่ผ่านการจ่ายเงิน — ใช้ private key ในเครื่องนี้</p>
+      <p class="welcome-sub" data-i18n="giftCodeSub">ต้องใส่บัญชี admin + รหัส 2FA — ยืนยันผ่านเซิร์ฟเวอร์ ไม่ใช้ private key ในเครื่องนี้</p>
+      <label class="field-label" for="gift-username" data-i18n="fieldAdminUsername">ชื่อผู้ใช้ admin</label>
+      <input id="gift-username" class="field-input" type="text" autocomplete="username" />
+      <label class="field-label" for="gift-password" data-i18n="fieldAdminPassword">รหัสผ่าน admin</label>
+      <input id="gift-password" class="field-input" type="password" autocomplete="current-password" />
+      <label class="field-label" for="gift-totp" data-i18n="fieldTotpCode">รหัส 2FA 6 หลัก</label>
+      <input id="gift-totp" class="field-input" type="text" inputmode="numeric" maxlength="6" placeholder="123456" />
       <label class="field-checkbox">
         <input type="checkbox" id="gift-lifetime" />
         <span data-i18n="giftLifetime">ใช้งานได้ตลอดชีพ</span>
@@ -370,6 +379,19 @@
         <button id="btn-gift-close" class="btn btn-ghost" data-i18n="btnClose">ปิด</button>
         <button id="btn-gift-copy" class="btn btn-ghost hidden" data-i18n="btnCopyCode">คัดลอกโค้ด</button>
         <button id="btn-gift-generate" class="btn btn-primary" data-i18n="btnGenerateGiftCode">สร้างโค้ด</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-bug-report" class="modal-overlay hidden">
+    <div class="modal">
+      <h2 data-i18n="bugReportTitle">แจ้งปัญหา / ข้อเสนอแนะ</h2>
+      <label class="field-label" for="bug-report-message" data-i18n="fieldBugReportMessage">อธิบายปัญหาหรือข้อเสนอแนะ</label>
+      <textarea id="bug-report-message" class="field-input" rows="5" placeholder="เช่น กดดาวน์โหลดแล้วขึ้น error, อยากให้เพิ่มฟีเจอร์..."></textarea>
+      <p id="bug-report-status" class="welcome-sub hidden"></p>
+      <div class="modal-actions">
+        <button id="btn-bug-report-close" class="btn btn-ghost" data-i18n="btnClose">ปิด</button>
+        <button id="btn-bug-report-send" class="btn btn-primary" data-i18n="btnSendReport">ส่งรายงาน</button>
       </div>
     </div>
   </div>

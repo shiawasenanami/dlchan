@@ -1,166 +1,166 @@
 const api = typeof browser !== 'undefined' ? browser : chrome;
 
-api.runtime.onMessage.addListener((message) => {
-  if (message.type === 'DLCHAN_SHOW_BAR') showBar(message.filename, message.url);
-});
+// Mirrors src/main/ytdlp.js's YTDLP_DOMAINS — on these sites we always
+// target the page URL (yt-dlp scrapes it) instead of the <video> element's
+// own src, which on these sites is usually a blob: URL or a DASH manifest
+// fragment that isn't downloadable on its own.
+const YTDLP_DOMAINS = [
+  'youtube.com', 'youtu.be', 'twitter.com', 'x.com', 'tiktok.com',
+  'facebook.com', 'fb.watch', 'instagram.com', 'vimeo.com', 'twitch.tv',
+  'dailymotion.com', 'reddit.com', 'soundcloud.com', 'bilibili.com', 'niconico.jp'
+];
 
-// Remembers where the user last dragged the bar to (per browser tab/session,
-// via sessionStorage) so it doesn't keep popping back to the top-right corner
-// like it used to — closer to how IDM's floating grab bubble behaves.
-function getSavedPosition() {
-  try {
-    const raw = sessionStorage.getItem('dlchan-bar-pos');
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
+function isYtDlpDomain(hostname) {
+  const host = hostname.replace(/^www\./, '');
+  return YTDLP_DOMAINS.some((d) => host === d || host.endsWith(`.${d}`));
+}
+
+const PAGE_IS_YTDLP_SITE = isYtDlpDomain(location.hostname);
+
+function sanitizeForFilesystem(name) {
+  return name.replace(/[\\/:*?"<>|]/g, '_').replace(/\s+/g, ' ').trim();
+}
+
+function formatQualityLabel(fmt) {
+  const bits = [];
+  if (fmt.height) bits.push(`${fmt.height}p${fmt.height >= 720 ? ' HD' : ''}`);
+  else if (fmt.isAudioOnly) bits.push('เสียงอย่างเดียว');
+  else if (fmt.note) bits.push(fmt.note);
+  bits.push((fmt.ext || '').toUpperCase());
+  if (fmt.filesize) bits.push(`${(fmt.filesize / 1024 / 1024).toFixed(1)} MB`);
+  return bits.filter(Boolean).join(' · ');
+}
+
+// --- Per-video floating "download" overlay ----------------------------------
+// Pinned to the top-left corner of the <video> it belongs to (not a fixed
+// corner of the page), so on a page with several clips it's always obvious
+// which one a click will download. Follows scroll/resize and hides entirely
+// while its video is scrolled out of view, reappearing when it's back.
+
+const MIN_VIDEO_SIZE = 160; // px — skip tiny/ad/thumbnail <video> elements
+const attachedVideos = new WeakSet();
+
+function buildOverlay(videoEl) {
+  const overlay = document.createElement('div');
+  overlay.className = 'dlchan-ov';
+  overlay.innerHTML = `
+    <button class="dlchan-ov-main" type="button">
+      <span class="dlchan-ov-icon">&#9660;</span>
+      <span class="dlchan-ov-label">ดาวน์โหลด</span>
+    </button>
+    <button class="dlchan-ov-caret" type="button" title="เลือกคุณภาพ">&#9662;</button>
+    <div class="dlchan-ov-dropdown dlchan-hidden"></div>
+  `;
+  document.documentElement.appendChild(overlay);
+
+  function reposition() {
+    const rect = videoEl.getBoundingClientRect();
+    const onScreen = rect.width >= MIN_VIDEO_SIZE && rect.height >= MIN_VIDEO_SIZE
+      && rect.bottom > 0 && rect.top < window.innerHeight
+      && rect.right > 0 && rect.left < window.innerWidth;
+    overlay.classList.toggle('dlchan-hidden', !onScreen);
+    if (!onScreen) return;
+    overlay.style.top = `${Math.max(0, rect.top) + 10}px`;
+    overlay.style.left = `${Math.max(0, rect.left) + 10}px`;
   }
-}
 
-function savePosition(top, left) {
-  try {
-    sessionStorage.setItem('dlchan-bar-pos', JSON.stringify({ top, left }));
-  } catch {
-    // sessionStorage unavailable (e.g. sandboxed iframe) — dragging still
-    // works for this instance, it just won't be remembered.
-  }
-}
+  const resolveTargetUrl = () => (PAGE_IS_YTDLP_SITE ? location.href : (videoEl.currentSrc || videoEl.src));
+  const resolveFilename = () => `${sanitizeForFilesystem(document.title || 'video')}.mp4`;
 
-function makeDraggable(bar, handle) {
-  let dragging = false;
-  let startX = 0;
-  let startY = 0;
-  let startTop = 0;
-  let startLeft = 0;
+  const queue = (formatId) => {
+    api.runtime.sendMessage({
+      type: 'DLCHAN_QUEUE',
+      url: resolveTargetUrl(),
+      filename: resolveFilename(),
+      formatId
+    });
+  };
 
-  handle.addEventListener('mousedown', (event) => {
-    dragging = true;
-    const rect = bar.getBoundingClientRect();
-    startX = event.clientX;
-    startY = event.clientY;
-    startTop = rect.top;
-    startLeft = rect.left;
-    bar.style.right = 'auto';
-    bar.classList.add('dlchan-dragging');
-    event.preventDefault();
+  overlay.querySelector('.dlchan-ov-main').addEventListener('click', (event) => {
+    event.stopPropagation();
+    queue(undefined);
+    overlay.classList.add('dlchan-queued');
+    setTimeout(() => overlay.classList.remove('dlchan-queued'), 1500);
   });
 
-  window.addEventListener('mousemove', (event) => {
-    if (!dragging) return;
-    const nextTop = Math.max(0, Math.min(window.innerHeight - bar.offsetHeight, startTop + (event.clientY - startY)));
-    const nextLeft = Math.max(0, Math.min(window.innerWidth - bar.offsetWidth, startLeft + (event.clientX - startX)));
-    bar.style.top = `${nextTop}px`;
-    bar.style.left = `${nextLeft}px`;
-  });
+  const dropdown = overlay.querySelector('.dlchan-ov-dropdown');
+  let ddOpen = false;
+  let ddLoaded = false;
 
-  window.addEventListener('mouseup', () => {
-    if (!dragging) return;
-    dragging = false;
-    bar.classList.remove('dlchan-dragging');
-    savePosition(parseFloat(bar.style.top), parseFloat(bar.style.left));
-  });
-}
-
-function formatQualityLabel(siteName, fmt) {
-  const bits = [siteName, fmt.ext ? `${fmt.ext.toUpperCase()} ไฟล์` : 'ไฟล์'];
-  if (fmt.height) bits.push(`คุณภาพ ${fmt.height}p${fmt.height >= 720 ? ' HD' : ''}`);
-  else if (fmt.note) bits.push(`คุณภาพ ${fmt.note}`);
-  if (fmt.filesize) bits.push(`${(fmt.filesize / 1024).toFixed(2)} KB`.replace('.00 KB', ' KB'));
-  return bits.join(', ');
-}
-
-function buildDropdown(bar, filename, url) {
-  const panel = document.createElement('div');
-  panel.className = 'dlchan-dropdown hidden';
-  panel.innerHTML = '<div class="dlchan-dropdown-loading">กำลังโหลดคุณภาพที่มี...</div>';
-  bar.appendChild(panel);
-
-  let loaded = false;
-
-  function renderItems(result) {
-    const siteName = location.hostname.replace(/^www\./, '').split('.')[0];
-    const items = ['<button class="dlchan-dd-item dlchan-dd-all" data-all>ดาวน์โหลดทั้งหมด</button>'];
-
-    if (result && result.ok && result.formats.length) {
+  function renderQualityOptions(result) {
+    const items = ['<button class="dlchan-dd-item dlchan-dd-all" data-best>คุณภาพดีที่สุด</button>'];
+    if (result && result.ok && result.formats && result.formats.length) {
       const heightSeen = new Set();
-      [...result.formats].reverse().forEach((fmt, i) => {
+      [...result.formats].reverse().forEach((fmt) => {
         if (fmt.height && heightSeen.has(fmt.height)) return;
         if (fmt.height) heightSeen.add(fmt.height);
         const selector = fmt.isVideoOnly ? `${fmt.formatId}+ba/b` : fmt.formatId;
-        items.push(`<button class="dlchan-dd-item" data-format="${selector}" data-index="${i}">${i + 1}. ${formatQualityLabel(siteName, fmt)}</button>`);
+        items.push(`<button class="dlchan-dd-item" data-format="${selector}">${formatQualityLabel(fmt)}</button>`);
       });
+    } else if (!PAGE_IS_YTDLP_SITE) {
+      items.push('<div class="dlchan-dropdown-loading">ไฟล์นี้มีคุณภาพเดียว</div>');
     }
-    panel.innerHTML = items.join('');
-
-    panel.querySelector('[data-all]').addEventListener('click', () => {
-      api.runtime.sendMessage({ type: 'DLCHAN_QUEUE', url, filename });
-      bar.remove();
-    });
-    panel.querySelectorAll('[data-format]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        api.runtime.sendMessage({
-          type: 'DLCHAN_QUEUE',
-          url: location.href,
-          filename: (result.title || filename).replace(/[\\/:*?"<>|]/g, '_') + '.mp4',
-          formatId: btn.dataset.format
-        });
-        bar.remove();
-      });
+    dropdown.innerHTML = items.join('');
+    dropdown.querySelector('[data-best]').addEventListener('click', () => { queue(undefined); dropdown.classList.add('dlchan-hidden'); ddOpen = false; });
+    dropdown.querySelectorAll('[data-format]').forEach((btn) => {
+      btn.addEventListener('click', () => { queue(btn.dataset.format); dropdown.classList.add('dlchan-hidden'); ddOpen = false; });
     });
   }
 
-  function open() {
-    panel.classList.remove('hidden');
-    if (loaded) return;
-    loaded = true;
-    api.runtime.sendMessage({ type: 'DLCHAN_GET_FORMATS', url: location.href }, (result) => renderItems(result));
-  }
-
-  return { panel, open, close: () => panel.classList.add('hidden') };
-}
-
-function showBar(filename, url) {
-  const existing = document.getElementById('dlchan-bar');
-  if (existing) existing.remove();
-
-  const bar = document.createElement('div');
-  bar.id = 'dlchan-bar';
-  bar.innerHTML = `
-    <span class="dlchan-drag" title="ลากเพื่อย้ายตำแหน่ง">&#8942;&#8942;</span>
-    <span class="dlchan-play">&#9654;</span>
-    <span class="dlchan-text">ดาวน์โหลดวิดีโอนี้</span>
-    <button class="dlchan-caret" title="เลือกคุณภาพ" type="button">&#9662;</button>
-    <button class="dlchan-close" title="ปิด" type="button">&#10005;</button>
-  `;
-  document.documentElement.appendChild(bar);
-
-  const saved = getSavedPosition();
-  if (saved) {
-    bar.style.top = `${Math.min(saved.top, window.innerHeight - bar.offsetHeight)}px`;
-    bar.style.left = `${Math.min(saved.left, window.innerWidth - bar.offsetWidth)}px`;
-    bar.style.right = 'auto';
-  }
-
-  makeDraggable(bar, bar.querySelector('.dlchan-drag'));
-
-  const queueAndClose = () => {
-    api.runtime.sendMessage({ type: 'DLCHAN_QUEUE', url, filename });
-    bar.remove();
-  };
-
-  bar.querySelector('.dlchan-play').addEventListener('click', queueAndClose);
-  bar.querySelector('.dlchan-text').addEventListener('click', queueAndClose);
-  bar.querySelector('.dlchan-close').addEventListener('click', () => bar.remove());
-
-  const dropdown = buildDropdown(bar, filename, url);
-  let ddOpen = false;
-  bar.querySelector('.dlchan-caret').addEventListener('click', (event) => {
+  overlay.querySelector('.dlchan-ov-caret').addEventListener('click', (event) => {
     event.stopPropagation();
     ddOpen = !ddOpen;
-    if (ddOpen) dropdown.open(); else dropdown.close();
-  });
-  document.addEventListener('click', (event) => {
-    if (!bar.contains(event.target)) { ddOpen = false; dropdown.close(); }
+    dropdown.classList.toggle('dlchan-hidden', !ddOpen);
+    if (!ddOpen || ddLoaded) return;
+    ddLoaded = true;
+    if (!PAGE_IS_YTDLP_SITE) {
+      renderQualityOptions(null);
+      return;
+    }
+    dropdown.innerHTML = '<div class="dlchan-dropdown-loading">กำลังโหลดคุณภาพที่มี...</div>';
+    api.runtime.sendMessage({ type: 'DLCHAN_GET_FORMATS', url: location.href }, (result) => renderQualityOptions(result));
   });
 
-  setTimeout(() => { if (!ddOpen) bar.remove(); }, 12000);
+  document.addEventListener('click', (event) => {
+    if (!overlay.contains(event.target)) { ddOpen = false; dropdown.classList.add('dlchan-hidden'); }
+  });
+
+  const io = new IntersectionObserver(reposition, { threshold: [0, 0.1, 0.5, 1] });
+  io.observe(videoEl);
+  window.addEventListener('scroll', reposition, true);
+  window.addEventListener('resize', reposition);
+  reposition();
+
+  // Clean up if the video element itself gets removed from the page (SPA
+  // navigation, feed item scrolled away and unmounted, etc.).
+  new MutationObserver(() => {
+    if (!document.documentElement.contains(videoEl)) {
+      io.disconnect();
+      overlay.remove();
+    }
+  }).observe(document.documentElement, { childList: true, subtree: true });
 }
+
+function attachOverlayIfEligible(videoEl) {
+  if (attachedVideos.has(videoEl)) return;
+  const rect = videoEl.getBoundingClientRect();
+  if (rect.width < MIN_VIDEO_SIZE && rect.height < MIN_VIDEO_SIZE && !PAGE_IS_YTDLP_SITE) return;
+  attachedVideos.add(videoEl);
+  buildOverlay(videoEl);
+}
+
+function scanForVideos() {
+  document.querySelectorAll('video').forEach(attachOverlayIfEligible);
+}
+
+scanForVideos();
+new MutationObserver(scanForVideos).observe(document.documentElement, { childList: true, subtree: true });
+// Some sites (YouTube, Facebook) resize/replace the video element's
+// dimensions after it starts buffering — re-check periodically for the
+// first while so an overlay isn't missed just because it was too small
+// (or zero-sized) at the moment it first appeared in the DOM.
+let rescanCount = 0;
+const rescanTimer = setInterval(() => {
+  scanForVideos();
+  if (++rescanCount > 20) clearInterval(rescanTimer);
+}, 1000);

@@ -2,7 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('dlchan', {
   appName: 'DL-chan',
-  version: '0.3.1',
+  version: '0.4.0',
   pickFolder: () => ipcRenderer.invoke('download:pick-folder'),
   startDownload: (payload) => ipcRenderer.invoke('download:start', payload),
   listFormats: (url) => ipcRenderer.invoke('download:list-formats', url),
@@ -21,8 +21,9 @@ contextBridge.exposeInMainWorld('dlchan', {
   getExtensionPath: () => ipcRenderer.invoke('setup:get-extension-path'),
   getLicenseStatus: () => ipcRenderer.invoke('license:get-status'),
   activateLicense: (code) => ipcRenderer.invoke('license:activate', code),
-  isLicenseAdminAvailable: () => ipcRenderer.invoke('license:admin-is-available'),
   generateGiftCode: (payload) => ipcRenderer.invoke('license:admin-generate-gift-code', payload),
+  registerLicense: (payload) => ipcRenderer.invoke('license:register', payload),
+  reportBug: (message) => ipcRenderer.invoke('bug:report', { message }),
   checkForUpdateNow: () => ipcRenderer.invoke('update:check-now'),
   downloadUpdate: () => ipcRenderer.invoke('update:download'),
   installUpdate: () => ipcRenderer.invoke('update:install'),
