@@ -24,7 +24,7 @@ function startExtensionBridge({ downloadManager, getMainWindow, isHlsEnabled = (
 
     if (req.method === 'GET' && req.url === '/ping') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ ok: true, app: 'DL-chan', version: '0.3.0' }));
+      res.end(JSON.stringify({ ok: true, app: 'DL-chan', version: '0.3.1' }));
       return;
     }
 

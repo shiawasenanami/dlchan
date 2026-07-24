@@ -101,12 +101,35 @@ class YtDlpTask extends EventEmitter {
     this.id = id;
     this.url = url;
     this.destPath = destPath;
+    // yt-dlp writes/merges directly to whatever -o points at, including
+    // ffmpeg's merge step — if that step fails partway, a corrupt file
+    // lands exactly there. Point -o at a temp path instead and only move
+    // it to destPath once the whole process has exited successfully, same
+    // pattern as DownloadTask/HlsDownloadTask's merge().
+    this.tempPath = `${destPath}.dlchan-tmp.mp4`;
     this.formatId = formatId || 'bv*+ba/b';
     this.status = 'pending';
     this.totalBytes = 0;
     this.downloadedBytes = 0;
     this.proc = null;
     this.canceled = false;
+  }
+
+  // Removes the temp output plus any leftover per-format fragment files
+  // yt-dlp creates while merging (e.g. "<temp>.f137.mp4", "<temp>.part") —
+  // matched by prefix since the exact suffix varies by format/codec.
+  cleanupTempFiles() {
+    const dir = path.dirname(this.tempPath);
+    const prefix = path.basename(this.tempPath);
+    let entries;
+    try {
+      entries = fs.readdirSync(dir);
+    } catch {
+      return;
+    }
+    entries
+      .filter((name) => name.startsWith(prefix))
+      .forEach((name) => fs.rmSync(path.join(dir, name), { force: true }));
   }
 
   progressSnapshot() {
@@ -143,7 +166,7 @@ class YtDlpTask extends EventEmitter {
       '--continue',
       '--merge-output-format', 'mp4',
       '--ffmpeg-location', ffmpegPath,
-      '-o', this.destPath,
+      '-o', this.tempPath,
       this.url
     ];
 
@@ -169,6 +192,7 @@ class YtDlpTask extends EventEmitter {
 
     this.proc.on('error', (err) => {
       if (this.canceled) return;
+      this.cleanupTempFiles();
       this.status = 'error';
       this.emit('error', err.message);
     });
@@ -177,11 +201,21 @@ class YtDlpTask extends EventEmitter {
       this.proc = null;
       if (this.canceled) return;
       if (this.status === 'paused') return;
+
       if (code === 0) {
+        try {
+          fs.renameSync(this.tempPath, this.destPath);
+        } catch (err) {
+          this.cleanupTempFiles();
+          this.status = 'error';
+          this.emit('error', `บันทึกไฟล์ไม่สำเร็จ: ${err.message}`);
+          return;
+        }
         this.status = 'done';
         this.downloadedBytes = this.totalBytes || this.downloadedBytes;
         this.emitProgress();
       } else {
+        this.cleanupTempFiles();
         this.status = 'error';
         this.emit('error', stderrTail.trim().split('\n').pop() || `yt-dlp exited with code ${code}`);
       }
@@ -207,8 +241,8 @@ class YtDlpTask extends EventEmitter {
     this.canceled = true;
     this.status = 'canceled';
     this.proc?.kill();
+    this.cleanupTempFiles();
     fs.rmSync(this.destPath, { force: true });
-    fs.rmSync(`${this.destPath}.part`, { force: true });
     this.emitProgress();
   }
 }
